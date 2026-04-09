@@ -1,3 +1,5 @@
+import * as SecureStore from 'expo-secure-store';
+
 const API_BASE_URL = 'http://127.0.0.1:8000/api';
 
 export async function apiFetch<T>(
@@ -5,12 +7,14 @@ export async function apiFetch<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
+  const token = await SecureStore.getItemAsync('fitmind_token');
 
   const response = await fetch(url, {
     ...options,
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers || {}),
     },
   });
@@ -32,6 +36,8 @@ export async function apiFetch<T>(
       data?.error ||
       data?.errors?.email?.[0] ||
       data?.errors?.password?.[0] ||
+      data?.errors?.goal_type?.[0] ||
+      data?.errors?.target_weight?.[0] ||
       'Request failed';
 
     throw new Error(message);

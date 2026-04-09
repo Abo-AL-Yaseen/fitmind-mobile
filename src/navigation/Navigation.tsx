@@ -21,36 +21,35 @@ import {
   Home,
   Apple,
   TrendingUp,
-  MessageCircle,
   Settings,
   Newspaper,
   MessageSquare,
 } from 'lucide-react-native';
 
-import {LoginScreen} from '../screens/LoginScreen';
-import {ForgotPasswordScreen} from '../screens/ForgotPasswordScreen';
-import {ResetPasswordScreen} from '../screens/ResetPasswordScreen';
+import { LoginScreen } from '../screens/LoginScreen';
+import { ForgotPasswordScreen } from '../screens/ForgotPasswordScreen';
+import { ResetPasswordScreen } from '../screens/ResetPasswordScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import WorkoutScreen from '../screens/WorkoutScreen';
 import NutritionScreen from '../screens/NutritionScreen';
 import ProgressScreen from '../screens/ProgressScreen';
-import AICoachScreen from '../screens/AICoachScreen';
 import NewsScreen from '../screens/NewsScreen';
 import FeedbackScreen from '../screens/FeedbackScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import { ChangePasswordScreen } from '../screens/ChangePasswordScreen';
 import { Colors } from '../constants/theme';
 
 export type RootStackParamList = {
   Login: undefined;
   ForgotPassword: undefined;
   ResetPassword: undefined;
+  ChangePassword: undefined;
   MainTabs: undefined;
   Profile: undefined;
   Feedback: undefined;
   Settings: undefined;
   News: undefined;
-  AICoach: undefined;
 };
 
 export type TabParamList = {
@@ -69,7 +68,6 @@ function MobileTopBar() {
   const topActions = [
     { route: 'News', icon: Newspaper },
     { route: 'Feedback', icon: MessageSquare },
-    { route: 'AICoach', icon: MessageCircle },
     { route: 'Settings', icon: Settings },
   ] as const;
 
@@ -213,10 +211,7 @@ export default function Navigation() {
           name="Profile"
           component={ProfileScreen}
           options={{
-            headerShown: true,
-            title: 'My Profile',
-            headerStyle: { backgroundColor: Colors.primary },
-            headerTintColor: '#fff',
+            headerShown: false,
           }}
         />
 
@@ -254,15 +249,17 @@ export default function Navigation() {
         />
 
         <Stack.Screen
-          name="AICoach"
-          component={AICoachScreen}
+          name="ChangePassword"
+          component={ChangePasswordScreen}
           options={{
             headerShown: true,
-            title: 'AI Coach',
+            title: 'Change Password',
             headerStyle: { backgroundColor: Colors.primary },
             headerTintColor: '#fff',
           }}
         />
+
+        
       </Stack.Navigator>
     </NavigationContainer>
   );

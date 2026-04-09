@@ -127,6 +127,22 @@ export async function getToken(): Promise<string | null> {
   return SecureStore.getItemAsync(AUTH_TOKEN_KEY);
 }
 
+export async function getUserId(): Promise<string | null> {
+  return SecureStore.getItemAsync(AUTH_USER_ID_KEY);
+}
+
+export async function getUserName(): Promise<string | null> {
+  return SecureStore.getItemAsync(AUTH_USER_NAME_KEY);
+}
+
+export async function getEmail(): Promise<string | null> {
+  return SecureStore.getItemAsync(AUTH_EMAIL_KEY);
+}
+
+export async function getRole(): Promise<string | null> {
+  return SecureStore.getItemAsync(AUTH_ROLE_KEY);
+}
+
 export async function clearAuth(): Promise<void> {
   await Promise.all([
     SecureStore.deleteItemAsync(AUTH_TOKEN_KEY),
@@ -137,6 +153,20 @@ export async function clearAuth(): Promise<void> {
     SecureStore.deleteItemAsync(RESET_TOKEN_KEY),
     SecureStore.deleteItemAsync(RESET_EMAIL_KEY),
   ]);
+}
+
+export async function logout(): Promise<ApiMessageResponse> {
+  try {
+    const response = await apiFetch<ApiMessageResponse>('/logout', {
+      method: 'POST',
+    });
+
+    await clearAuth();
+    return response;
+  } catch (error) {
+    await clearAuth();
+    throw error;
+  }
 }
 
 export async function resetPassword(

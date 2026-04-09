@@ -1,13 +1,37 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { Dumbbell, Apple, TrendingUp, MessageCircle, Flame, Trophy, Target, Zap, ChevronRight, Droplets, User } from 'lucide-react-native';
-import { quickLinks, todayProgress, quickStats } from '../data/dashboardData';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+} from 'react-native';
+import {
+  Dumbbell,
+  Apple,
+  TrendingUp,
+  MessageCircle,
+  Flame,
+  Trophy,
+  Target,
+  ChevronRight,
+  ShieldCheck,
+  User,
+} from 'lucide-react-native';
+import {
+  quickLinks,
+  todayProgress,
+  quickStats,
+} from '../data/dashboardData';
 import { StatCard } from '../components/StatCard';
-import { AITipCard } from '../components/AITipCard';
 import { ProgressBar } from '../components/ProgressBar';
 
 export default function DashboardScreen({ navigation }: any) {
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const today = new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  });
 
   const iconMap: Record<string, any> = {
     User,
@@ -17,8 +41,14 @@ export default function DashboardScreen({ navigation }: any) {
     MessageCircle,
     Flame,
     Trophy,
-    Zap,
   };
+
+  const filteredQuickLinks = quickLinks.filter(
+    (link) =>
+      link.path !== 'AICoach' &&
+      link.label?.toLowerCase() !== 'ai coach' &&
+      link.icon !== 'MessageCircle'
+  );
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -30,7 +60,8 @@ export default function DashboardScreen({ navigation }: any) {
           <View style={styles.heroGoal}>
             <Target color="#7FD4C9" size={18} />
             <Text style={styles.heroGoalText}>
-              Complete your Chest & Triceps workout and hit your calorie target today!
+              Complete your Chest & Triceps workout and hit your calorie target
+              today!
             </Text>
           </View>
         </View>
@@ -75,7 +106,7 @@ export default function DashboardScreen({ navigation }: any) {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Access</Text>
           <View style={styles.quickLinksGrid}>
-            {quickLinks.map((link) => {
+            {filteredQuickLinks.map((link) => {
               const LinkIcon = iconMap[link.icon];
               return (
                 <TouchableOpacity
@@ -84,7 +115,12 @@ export default function DashboardScreen({ navigation }: any) {
                   onPress={() => navigation.navigate(link.path)}
                   activeOpacity={0.7}
                 >
-                  <View style={[styles.quickLinkIcon, { backgroundColor: link.bg }]}>
+                  <View
+                    style={[
+                      styles.quickLinkIcon,
+                      { backgroundColor: link.bg },
+                    ]}
+                  >
                     <LinkIcon color={link.color} size={22} />
                   </View>
                   <View style={styles.quickLinkContent}>
@@ -97,44 +133,24 @@ export default function DashboardScreen({ navigation }: any) {
           </View>
         </View>
 
-        {/* AI Insight Card */}
-        <View style={styles.insightCard}>
-          <View style={styles.insightIcon}>
-            <Zap color="#FFFFFF" size={18} />
-          </View>
-          <View style={styles.insightContent}>
-            <Text style={styles.insightTitle}>AI Insight</Text>
-            <Text style={styles.insightText}>
-              Great progress this week! Consider increasing bench press by 5 lbs next session based on your strength trend.
-            </Text>
-          </View>
-        </View>
-
-        {/* Water Tracker */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <View style={styles.waterHeader}>
-              <Droplets color="#60A5FA" size={18} />
-              <Text style={styles.cardTitle}>Water Intake</Text>
+        {/* General Motivation Card */}
+        <View style={styles.generalCard}>
+          <View style={styles.generalHeader}>
+            <View style={styles.generalIcon}>
+              <ShieldCheck color="#FFFFFF" size={18} />
             </View>
-            <Text style={styles.waterCount}>6 / 8 glasses</Text>
+
+            <View style={styles.generalHeaderText}>
+              <Text style={styles.generalEyebrow}>FitMind Experience</Text>
+              <Text style={styles.generalTitle}>Stay Consistent, Stay Strong</Text>
+            </View>
           </View>
 
-          <View style={styles.waterGlasses}>
-            {[...Array(8)].map((_, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.waterGlass,
-                  { backgroundColor: i < 6 ? '#60A5FA' : '#F3F4F6' }
-                ]}
-              />
-            ))}
-          </View>
-
-          <TouchableOpacity style={styles.addWaterButton} activeOpacity={0.7}>
-            <Text style={styles.addWaterButtonText}>+ Add Glass</Text>
-          </TouchableOpacity>
+          <Text style={styles.generalDescription}>
+            FitMind helps you stay organized, focused, and motivated throughout your
+            fitness journey with a clean experience designed to support your daily
+            routine.
+          </Text>
         </View>
       </View>
     </ScrollView>
@@ -276,68 +292,51 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1F2937',
   },
-  insightCard: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(13, 125, 109, 0.1)',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(13, 125, 109, 0.15)',
-    gap: 12,
+
+  generalCard: {
     marginTop: 20,
+    backgroundColor: '#F8FBFA',
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: '#DCEFEB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 2,
   },
-  insightIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+  generalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  generalIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     backgroundColor: '#0D7D6D',
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 12,
   },
-  insightContent: {
+  generalHeaderText: {
     flex: 1,
   },
-  insightTitle: {
-    fontSize: 14,
+  generalEyebrow: {
+    fontSize: 12,
     fontWeight: '600',
     color: '#0D7D6D',
-    marginBottom: 4,
+    marginBottom: 2,
   },
-  insightText: {
+  generalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  generalDescription: {
     fontSize: 14,
-    color: '#6B7280',
-    lineHeight: 20,
-  },
-  waterHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  waterCount: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  waterGlasses: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  waterGlass: {
-    flex: 1,
-    height: 32,
-    borderRadius: 8,
-  },
-  addWaterButton: {
-    marginTop: 12,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderColor: '#BFDBFE',
-    alignItems: 'center',
-  },
-  addWaterButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#60A5FA',
+    lineHeight: 22,
+    color: '#5B6472',
   },
 });

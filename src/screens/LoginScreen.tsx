@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,8 +8,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -23,6 +23,13 @@ type LoginScreenProps = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Login'>;
 };
 
+type ToastState = {
+  visible: boolean;
+  type: 'success' | 'error';
+  title: string;
+  message: string;
+};
+
 export function LoginScreen({ navigation }: LoginScreenProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -33,6 +40,73 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [generalError, setGeneralError] = useState('');
+
+  const [toast, setToast] = useState<ToastState>({
+    visible: false,
+    type: 'success',
+    title: '',
+    message: '',
+  });
+
+  const toastTranslateY = useRef(new Animated.Value(120)).current;
+  const toastOpacity = useRef(new Animated.Value(0)).current;
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const navigateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function showToast(
+    type: 'success' | 'error',
+    title: string,
+    message: string,
+    shouldNavigate = false
+  ) {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    if (navigateTimerRef.current) clearTimeout(navigateTimerRef.current);
+
+    setToast({
+      visible: true,
+      type,
+      title,
+      message,
+    });
+
+    Animated.parallel([
+      Animated.timing(toastTranslateY, {
+        toValue: 0,
+        duration: 260,
+        useNativeDriver: true,
+      }),
+      Animated.timing(toastOpacity, {
+        toValue: 1,
+        duration: 260,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    const visibleDuration = 2600;
+
+    toastTimerRef.current = setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(toastTranslateY, {
+          toValue: 120,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+        Animated.timing(toastOpacity, {
+          toValue: 0,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setToast((prev) => ({ ...prev, visible: false }));
+      });
+    }, visibleDuration);
+
+    if (shouldNavigate) {
+      navigateTimerRef.current = setTimeout(() => {
+        navigation.replace('MainTabs');
+      }, visibleDuration - 150);
+    }
+  }
 
   function validateForm(): boolean {
     let isValid = true;
@@ -70,7 +144,8 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
       });
 
       if (response.role !== 'user') {
-        Alert.alert(
+        showToast(
+          'error',
           'Access denied',
           'Only user accounts can log in to the mobile app.'
         );
@@ -79,7 +154,12 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
 
       await saveAuth(response);
 
-      navigation.replace('MainTabs');
+      showToast(
+        'success',
+        'Login successful',
+        'Welcome back! Redirecting to your dashboard...',
+        true
+      );
     } catch (error: any) {
       const message =
         error?.message || 'Login failed. Please check your credentials.';
@@ -92,6 +172,8 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
   function handleForgotPassword() {
     navigation.navigate('ForgotPassword');
   }
+
+  const toastIsSuccess = toast.type === 'success';
 
   return (
     <KeyboardAvoidingView
@@ -226,6 +308,38 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
 
             <Text style={styles.footer}>© 2026 FitMind. All rights reserved.</Text>
           </ScrollView>
+
+          {toast.visible && (
+            <Animated.View
+              style={[
+                styles.toastContainer,
+                {
+                  opacity: toastOpacity,
+                  transform: [{ translateY: toastTranslateY }],
+                },
+              ]}
+            >
+              <View
+                style={[
+                  styles.toastCard,
+                  toastIsSuccess ? styles.toastSuccess : styles.toastError,
+                ]}
+              >
+                <View style={styles.toastIconWrap}>
+                  {toastIsSuccess ? (
+                    <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                  ) : (
+                    <Ionicons name="alert" size={16} color="#FFFFFF" />
+                  )}
+                </View>
+
+                <View style={styles.toastTextWrap}>
+                  <Text style={styles.toastTitle}>{toast.title}</Text>
+                  <Text style={styles.toastMessage}>{toast.message}</Text>
+                </View>
+              </View>
+            </Animated.View>
+          )}
         </SafeAreaView>
       </LinearGradient>
     </KeyboardAvoidingView>
@@ -249,7 +363,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: Spacing.lg,
     paddingTop: Spacing.xxxl,
-    paddingBottom: Spacing.xxxl,
+    paddingBottom: 120,
   },
   logoContainer: {
     alignItems: 'center',
@@ -396,5 +510,53 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.45)',
     fontSize: 12,
     marginTop: Spacing.xl,
+  },
+  toastContainer: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 18,
+  },
+  toastCard: {
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.16,
+    shadowRadius: 14,
+    elevation: 10,
+  },
+  toastSuccess: {
+    backgroundColor: '#0F766E',
+  },
+  toastError: {
+    backgroundColor: '#B91C1C',
+  },
+  toastIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+    marginTop: 2,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  toastTextWrap: {
+    flex: 1,
+  },
+  toastTitle: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 3,
+  },
+  toastMessage: {
+    color: 'rgba(255,255,255,0.92)',
+    fontSize: 13,
+    lineHeight: 18,
   },
 });
