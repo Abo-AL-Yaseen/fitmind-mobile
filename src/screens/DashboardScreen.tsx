@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import {
   Dumbbell,
@@ -18,20 +20,57 @@ import {
   ShieldCheck,
   User,
 } from 'lucide-react-native';
-import {
-  quickLinks,
-  todayProgress,
-  quickStats,
-} from '../data/dashboardData';
+import { quickLinks } from '../data/dashboardData';
 import { StatCard } from '../components/StatCard';
 import { ProgressBar } from '../components/ProgressBar';
+import { getDashboardSummary, type DashboardSummary } from '../services/dashboard';
 
 export default function DashboardScreen({ navigation }: any) {
-  const today = new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-  });
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadDashboard = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
+      setError(null);
+      const result = await getDashboardSummary();
+      setSummary(result);
+    } catch (err: any) {
+      setError(err?.message ?? 'Failed to load dashboard.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadDashboard();
+  }, [loadDashboard]);
+
+  const today = useMemo(
+    () =>
+      new Date().toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+      }),
+    []
+  );
+
+  const dayName = useMemo(
+    () =>
+      new Date().toLocaleDateString('en-US', {
+        weekday: 'long',
+      }),
+    []
+  );
 
   const iconMap: Record<string, any> = {
     User,
@@ -43,30 +82,99 @@ export default function DashboardScreen({ navigation }: any) {
     Trophy,
   };
 
-  const filteredQuickLinks = quickLinks.filter(
-    (link) =>
-      link.path !== 'AICoach' &&
-      link.label?.toLowerCase() !== 'ai coach' &&
-      link.icon !== 'MessageCircle'
+  const filteredQuickLinks = useMemo(
+    () =>
+      quickLinks.filter(
+        (link) =>
+          link.path !== 'AICoach' &&
+          link.label?.toLowerCase() !== 'ai coach' &&
+          link.icon !== 'MessageCircle'
+      ),
+    []
   );
 
+  if (loading) {
+    return (
+      <View style={styles.centerState}>
+        <ActivityIndicator size="large" color="#0D7D6D" />
+        <Text style={styles.centerStateText}>Loading dashboard...</Text>
+      </View>
+    );
+  }
+
+  if (error && !summary) {
+    return (
+      <View style={styles.centerState}>
+        <Text style={styles.errorTitle}>Couldn’t load dashboard</Text>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={() => loadDashboard()}>
+          <Text style={styles.retryButtonText}>Try Again</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const quickStats = summary?.quickStats ?? [];
+  const todayProgress = summary?.todayProgress ?? [];
+
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={() => loadDashboard(true)} />
+      }
+    >
       <View style={styles.content}>
-        {/* Welcome Hero Card */}
         <View style={styles.heroCard}>
           <Text style={styles.heroDate}>{today}</Text>
-          <Text style={styles.heroTitle}>Welcome back, John! 👋</Text>
+          <Text style={styles.heroTitle}>{summary?.heroTitle ?? 'Welcome back! 👋'}</Text>
+
           <View style={styles.heroGoal}>
             <Target color="#7FD4C9" size={18} />
             <Text style={styles.heroGoalText}>
-              Complete your Chest & Triceps workout and hit your calorie target
-              today!
+              {summary?.heroGoalText ?? 'Stay consistent and keep moving today.'}
             </Text>
+          </View>
+
+          <View style={styles.heroMetaRow}>
+            <View style={styles.heroMetaBadge}>
+              <Text style={styles.heroMetaBadgeText}>
+                Goal: {summary?.activeNutritionGoal ?? 'No Goal'}
+              </Text>
+            </View>
+
+            <View style={styles.heroMetaBadge}>
+              <Text style={styles.heroMetaBadgeText}>
+                Nutrition: {summary?.activeNutritionPlanName ?? 'No Plan'}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.heroInfoGrid}>
+            <View style={styles.heroInfoCard}>
+              <Text style={styles.heroInfoLabel}>Age</Text>
+              <Text style={styles.heroInfoValue}>
+                {summary?.profile.age != null ? summary.profile.age : '--'}
+              </Text>
+            </View>
+
+            <View style={styles.heroInfoCard}>
+              <Text style={styles.heroInfoLabel}>Height</Text>
+              <Text style={styles.heroInfoValue}>
+                {summary?.profile.height != null ? `${summary.profile.height} cm` : '--'}
+              </Text>
+            </View>
+
+            <View style={styles.heroInfoCard}>
+              <Text style={styles.heroInfoLabel}>Weight</Text>
+              <Text style={styles.heroInfoValue}>
+                {summary?.profile.weight != null ? `${summary.profile.weight} kg` : '--'}
+              </Text>
+            </View>
           </View>
         </View>
 
-        {/* Quick Stats */}
         <View style={styles.statsGrid}>
           {quickStats.map((stat, index) => (
             <StatCard
@@ -80,12 +188,11 @@ export default function DashboardScreen({ navigation }: any) {
           ))}
         </View>
 
-        {/* Today's Progress */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>Today's Progress</Text>
+            <Text style={styles.cardTitle}>Today&apos;s Progress</Text>
             <View style={styles.dayBadge}>
-              <Text style={styles.dayBadgeText}>Wednesday</Text>
+              <Text style={styles.dayBadgeText}>{dayName}</Text>
             </View>
           </View>
 
@@ -102,7 +209,6 @@ export default function DashboardScreen({ navigation }: any) {
           </View>
         </View>
 
-        {/* Quick Access */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Access</Text>
           <View style={styles.quickLinksGrid}>
@@ -115,14 +221,10 @@ export default function DashboardScreen({ navigation }: any) {
                   onPress={() => navigation.navigate(link.path)}
                   activeOpacity={0.7}
                 >
-                  <View
-                    style={[
-                      styles.quickLinkIcon,
-                      { backgroundColor: link.bg },
-                    ]}
-                  >
+                  <View style={[styles.quickLinkIcon, { backgroundColor: link.bg }]}>
                     <LinkIcon color={link.color} size={22} />
                   </View>
+
                   <View style={styles.quickLinkContent}>
                     <Text style={styles.quickLinkLabel}>{link.label}</Text>
                     <ChevronRight color="#D1D5DB" size={14} />
@@ -133,7 +235,6 @@ export default function DashboardScreen({ navigation }: any) {
           </View>
         </View>
 
-        {/* General Motivation Card */}
         <View style={styles.generalCard}>
           <View style={styles.generalHeader}>
             <View style={styles.generalIcon}>
@@ -147,9 +248,9 @@ export default function DashboardScreen({ navigation }: any) {
           </View>
 
           <Text style={styles.generalDescription}>
-            FitMind helps you stay organized, focused, and motivated throughout your
-            fitness journey with a clean experience designed to support your daily
-            routine.
+            Your dashboard is now built from your live profile, goals, workout plans,
+            and nutrition plans so you can track the most relevant parts of your
+            journey in one place.
           </Text>
         </View>
       </View>
@@ -165,6 +266,42 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     gap: 20,
+  },
+  centerState: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  centerStateText: {
+    marginTop: 12,
+    fontSize: 15,
+    color: '#6B7280',
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: '#0D7D6D',
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
   heroCard: {
     backgroundColor: '#0D7D6D',
@@ -204,6 +341,47 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.9)',
     lineHeight: 20,
   },
+  heroMetaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 14,
+  },
+  heroMetaBadge: {
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  heroMetaBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  heroInfoGrid: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 16,
+  },
+  heroInfoCard: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  heroInfoLabel: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.72)',
+    marginBottom: 6,
+  },
+  heroInfoValue: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
   statsGrid: {
     flexDirection: 'row',
     gap: 12,
@@ -236,85 +414,81 @@ const styles = StyleSheet.create({
   dayBadge: {
     backgroundColor: '#E6F4F1',
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 6,
     borderRadius: 999,
   },
   dayBadgeText: {
-    fontSize: 12,
-    fontWeight: '500',
     color: '#0D7D6D',
+    fontSize: 12,
+    fontWeight: '600',
   },
   progressList: {
     gap: 16,
   },
   section: {
-    marginTop: 20,
+    marginTop: 4,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#111827',
     marginBottom: 12,
   },
   quickLinksGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 12,
   },
   quickLinkCard: {
-    width: '48%',
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
     borderWidth: 1,
     borderColor: '#F3F4F6',
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
   },
   quickLinkIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
+    width: 46,
+    height: 46,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginRight: 12,
   },
   quickLinkContent: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   quickLinkLabel: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#111827',
   },
-
   generalCard: {
-    marginTop: 20,
-    backgroundColor: '#F8FBFA',
+    backgroundColor: '#F0FDF4',
     borderRadius: 20,
     padding: 18,
     borderWidth: 1,
-    borderColor: '#DCEFEB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 2,
+    borderColor: '#DCFCE7',
+    marginBottom: 24,
   },
   generalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 12,
   },
   generalIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     backgroundColor: '#0D7D6D',
     alignItems: 'center',
     justifyContent: 'center',
@@ -325,18 +499,18 @@ const styles = StyleSheet.create({
   },
   generalEyebrow: {
     fontSize: 12,
-    fontWeight: '600',
     color: '#0D7D6D',
+    fontWeight: '700',
     marginBottom: 2,
   },
   generalTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: '#111827',
   },
   generalDescription: {
     fontSize: 14,
     lineHeight: 22,
-    color: '#5B6472',
+    color: '#374151',
   },
 });
