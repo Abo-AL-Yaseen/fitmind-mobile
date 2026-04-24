@@ -12,55 +12,63 @@ import {
   View,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { forgotPassword, saveResetData, verifyOtp } from '../services/auth';
 import type { RootStackParamList } from '../navigation/Navigation';
 import { Colors } from '../constants/theme';
+import { useForgotPasswordMutation } from '../hooks/auth/mutations/useForgotPasswordMutation';
+import { useVerifyOtpMutation } from '../hooks/auth/mutations/useVerifyOtpMutation';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ForgotPassword'>;
 
 export function ForgotPasswordScreen({ navigation }: Props) {
+  const forgotPasswordMutation = useForgotPasswordMutation();
+  const verifyOtpMutation = useVerifyOtpMutation();
+
   const [step, setStep] = useState<'email' | 'otp'>('email');
-  const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [error, setError] = useState('');
 
+  const isLoading =
+    forgotPasswordMutation.isPending || verifyOtpMutation.isPending;
+
   const handleSendOtp = async () => {
-    if (!email.trim()) {
+    const cleanEmail = email.trim();
+
+    if (!cleanEmail) {
       setError('Please enter your email address.');
       return;
     }
 
-    setIsLoading(true);
     setError('');
 
     try {
-      await forgotPassword(email.trim());
+      await forgotPasswordMutation.mutateAsync(cleanEmail);
       setStep('otp');
     } catch (err: any) {
       setError(err?.message || 'Failed to send OTP. Please try again.');
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const handleVerifyOtp = async () => {
-    if (!otp.trim()) {
+    const cleanEmail = email.trim();
+    const cleanOtp = otp.trim();
+
+    if (!cleanOtp) {
       setError('Please enter the OTP code.');
       return;
     }
 
-    setIsLoading(true);
     setError('');
 
     try {
-      const data = await verifyOtp(email.trim(), otp.trim());
-      await saveResetData(data.reset_token, email.trim());
+      await verifyOtpMutation.mutateAsync({
+        email: cleanEmail,
+        otp: cleanOtp,
+      });
+
       navigation.navigate('ResetPassword');
     } catch (err: any) {
       setError(err?.message || 'OTP verification failed. Please try again.');
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -107,7 +115,10 @@ export function ForgotPasswordScreen({ navigation }: Props) {
                     autoCapitalize="none"
                     autoCorrect={false}
                     value={email}
-                    onChangeText={setEmail}
+                    onChangeText={(value) => {
+                      setEmail(value);
+                      if (error) setError('');
+                    }}
                   />
                 </View>
 
@@ -157,7 +168,10 @@ export function ForgotPasswordScreen({ navigation }: Props) {
                     placeholderTextColor="#9CA3AF"
                     keyboardType="number-pad"
                     value={otp}
-                    onChangeText={setOtp}
+                    onChangeText={(value) => {
+                      setOtp(value);
+                      if (error) setError('');
+                    }}
                   />
                 </View>
 

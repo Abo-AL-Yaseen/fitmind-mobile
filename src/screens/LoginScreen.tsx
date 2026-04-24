@@ -17,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/Navigation';
 import { Colors, Spacing, BorderRadius, FontSizes } from '../constants/theme';
-import { login, saveAuth } from '../services/auth';
+import { useLoginMutation } from '../hooks/auth/mutations/useLoginMutation';
 
 type LoginScreenProps = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Login'>;
@@ -31,8 +31,9 @@ type ToastState = {
 };
 
 export function LoginScreen({ navigation }: LoginScreenProps) {
+  const loginMutation = useLoginMutation();
+
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -52,6 +53,8 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
   const toastOpacity = useRef(new Animated.Value(0)).current;
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navigateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const isLoading = loginMutation.isPending;
 
   function showToast(
     type: 'success' | 'error',
@@ -135,24 +138,12 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
     if (!validateForm()) return;
 
     try {
-      setIsLoading(true);
       setGeneralError('');
 
-      const response = await login({
+      await loginMutation.mutateAsync({
         email: email.trim(),
         password,
       });
-
-      if (response.role !== 'user') {
-        showToast(
-          'error',
-          'Access denied',
-          'Only user accounts can log in to the mobile app.'
-        );
-        return;
-      }
-
-      await saveAuth(response);
 
       showToast(
         'success',
@@ -163,9 +154,10 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
     } catch (error: any) {
       const message =
         error?.message || 'Login failed. Please check your credentials.';
+
       setGeneralError(message);
-    } finally {
-      setIsLoading(false);
+
+      showToast('error', 'Login failed', message);
     }
   }
 
@@ -223,7 +215,11 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
                       placeholder="your@email.com"
                       placeholderTextColor={Colors.textLight}
                       value={email}
-                      onChangeText={setEmail}
+                      onChangeText={(value) => {
+                        setEmail(value);
+                        if (emailError) setEmailError('');
+                        if (generalError) setGeneralError('');
+                      }}
                       keyboardType="email-address"
                       autoCapitalize="none"
                       autoCorrect={false}
@@ -246,7 +242,11 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
                       placeholder="••••••••"
                       placeholderTextColor={Colors.textLight}
                       value={password}
-                      onChangeText={setPassword}
+                      onChangeText={(value) => {
+                        setPassword(value);
+                        if (passwordError) setPasswordError('');
+                        if (generalError) setGeneralError('');
+                      }}
                       secureTextEntry={!showPassword}
                       autoCapitalize="none"
                       autoCorrect={false}
@@ -290,7 +290,7 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
                     colors={[Colors.primary, Colors.primaryLight]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
-                    style={styles.buttonGradient}
+                    style={[styles.buttonGradient, isLoading && styles.disabledButton]}
                   >
                     {isLoading ? (
                       <ActivityIndicator color="#fff" />
@@ -473,6 +473,9 @@ const styles = StyleSheet.create({
     height: 48,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  disabledButton: {
+    opacity: 0.7,
   },
   primaryButtonText: {
     color: '#fff',

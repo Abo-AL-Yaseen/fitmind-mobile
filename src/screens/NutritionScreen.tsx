@@ -30,13 +30,12 @@ import {
 } from 'lucide-react-native';
 import { AITipCard } from '../components/AITipCard';
 import {
-  generateNutritionPlan,
-  getLatestAcceptedNutritionPlan,
-  modifyNutritionPlan,
   type NutritionGoalOption,
   type NutritionMealItem,
-  type NutritionPlanVersion,
 } from '../services/nutrition';
+import { useLatestNutritionPlanQuery } from '../hooks/nutrition/queries/useLatestNutritionPlanQuery';
+import { useGenerateNutritionPlanMutation } from '../hooks/nutrition/mutations/useGenerateNutritionPlanMutation';
+import { useModifyNutritionPlanMutation } from '../hooks/nutrition/mutations/useModifyNutritionPlanMutation';
 
 type MealGroup = {
   key: string;
@@ -173,7 +172,6 @@ function getItemFat(item: NutritionMealItem) {
   return Number(item?.food?.fat ?? (item as any)?.nutrition?.fat ?? (item as any)?.fat ?? 0);
 }
 
-
 function groupFoodsByMeal(items: NutritionMealItem[]): MealGroup[] {
   const orderedMealTypes = ['breakfast', 'lunch', 'dinner', 'snack', 'snacks'];
 
@@ -206,12 +204,18 @@ function groupFoodsByMeal(items: NutritionMealItem[]): MealGroup[] {
 }
 
 export default function NutritionScreen() {
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [generateLoading, setGenerateLoading] = useState(false);
-  const [modifyLoading, setModifyLoading] = useState(false);
+  const {
+    data: activePlan = null,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isRefetching,
+  } = useLatestNutritionPlanQuery();
 
-  const [activePlan, setActivePlan] = useState<NutritionPlanVersion | null>(null);
+  const generateMutation = useGenerateNutritionPlanMutation();
+  const modifyMutation = useModifyNutritionPlanMutation();
+
   const [expandedMeal, setExpandedMeal] = useState<string | null>('breakfast');
   const [selectedFood, setSelectedFood] = useState<NutritionMealItem | null>(null);
 
@@ -226,6 +230,10 @@ export default function NutritionScreen() {
     message: '',
     type: 'info',
   });
+
+  const generateLoading = generateMutation.isPending;
+  const modifyLoading = modifyMutation.isPending;
+  const refreshing = isRefetching && !isLoading;
 
   const showAppAlert = (
     title: string,
@@ -244,34 +252,28 @@ export default function NutritionScreen() {
     setAppAlert((prev) => ({ ...prev, visible: false }));
   };
 
-  const loadActivePlan = async (showLoader = true) => {
-    try {
-      if (showLoader) setLoading(true);
-      setRefreshing(!showLoader);
-
-      const plan = await getLatestAcceptedNutritionPlan();
-      setActivePlan(plan);
-
-      const grouped = groupFoodsByMeal(plan?.food_items ?? []);
-      if (grouped.length) {
-        setExpandedMeal(grouped[0].key);
-      }
-    } catch (error: any) {
-      showAppAlert('Load Failed', prettifyApiError(error?.message), 'error');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  useEffect(() => {
-    loadActivePlan(true);
-  }, []);
-
   const mealGroups = useMemo(
     () => groupFoodsByMeal(activePlan?.food_items ?? []),
     [activePlan]
   );
+
+  useEffect(() => {
+    if (isError) {
+      showAppAlert('Load Failed', prettifyApiError((error as Error)?.message), 'error');
+    }
+  }, [isError, error]);
+
+  useEffect(() => {
+    if (!mealGroups.length) {
+      return;
+    }
+
+    const expandedMealExists = mealGroups.some((meal) => meal.key === expandedMeal);
+
+    if (!expandedMeal || !expandedMealExists) {
+      setExpandedMeal(mealGroups[0].key);
+    }
+  }, [mealGroups, expandedMeal]);
 
   const currentFoodNames = useMemo(() => {
     const names = (activePlan?.food_items ?? [])
@@ -339,10 +341,13 @@ export default function NutritionScreen() {
     },
   ];
 
+  const handleRefresh = async () => {
+    await refetch();
+  };
+
   const handleGeneratePlan = async () => {
     try {
-      setGenerateLoading(true);
-      const response = await generateNutritionPlan();
+      const response = await generateMutation.mutateAsync();
 
       showAppAlert(
         'Plan Request Sent',
@@ -352,8 +357,6 @@ export default function NutritionScreen() {
       );
     } catch (error: any) {
       showAppAlert('Generate Failed', prettifyApiError(error?.message), 'error');
-    } finally {
-      setGenerateLoading(false);
     }
   };
 
@@ -383,9 +386,7 @@ export default function NutritionScreen() {
     }
 
     try {
-      setModifyLoading(true);
-
-      await modifyNutritionPlan({
+      await modifyMutation.mutateAsync({
         current_plan_id: String(activePlan.version_id),
         user_feedback: {
           goal: selectedGoal,
@@ -405,12 +406,10 @@ export default function NutritionScreen() {
       );
     } catch (error: any) {
       showAppAlert('Modify Failed', prettifyApiError(error?.message), 'error');
-    } finally {
-      setModifyLoading(false);
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#0D7D6D" />
@@ -456,7 +455,7 @@ export default function NutritionScreen() {
               <TouchableOpacity
                 style={styles.refreshButton}
                 activeOpacity={0.8}
-                onPress={() => loadActivePlan(false)}
+                onPress={handleRefresh}
                 disabled={refreshing}
               >
                 {refreshing ? (

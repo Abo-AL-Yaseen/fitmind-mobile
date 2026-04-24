@@ -14,19 +14,18 @@ import {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import type { RootStackParamList } from '../navigation/Navigation';
-import {
-  clearResetData,
-  getResetData,
-  resetPassword,
-} from '../services/auth';
 import { Colors, Spacing, BorderRadius, FontSizes } from '../constants/theme';
+import { useResetDataQuery } from '../hooks/auth/queries/useResetDataQuery';
+import { useResetPasswordMutation } from '../hooks/auth/mutations/useResetPasswordMutation';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ResetPassword'>;
 
 export function ResetPasswordScreen({ navigation }: Props) {
+  const resetDataQuery = useResetDataQuery();
+  const resetPasswordMutation = useResetPasswordMutation();
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState('');
 
@@ -35,17 +34,13 @@ export function ResetPasswordScreen({ navigation }: Props) {
     confirmPassword: '',
   });
 
+  const isLoading = resetPasswordMutation.isPending;
+
   useEffect(() => {
-    const checkResetToken = async () => {
-      const { resetToken } = await getResetData();
-
-      if (!resetToken) {
-        navigation.replace('ForgotPassword');
-      }
-    };
-
-    checkResetToken();
-  }, [navigation]);
+    if (resetDataQuery.isFetched && !resetDataQuery.data?.resetToken) {
+      navigation.replace('ForgotPassword');
+    }
+  }, [navigation, resetDataQuery.isFetched, resetDataQuery.data?.resetToken]);
 
   const passwordChecks = useMemo(() => {
     const password = formData.password;
@@ -77,24 +72,22 @@ export function ResetPasswordScreen({ navigation }: Props) {
       return;
     }
 
-    setIsLoading(true);
+    const resetToken = resetDataQuery.data?.resetToken;
+
+    if (!resetToken) {
+      navigation.replace('ForgotPassword');
+      return;
+    }
+
     setError('');
 
     try {
-      const { resetToken } = await getResetData();
-
-      if (!resetToken) {
-        navigation.replace('ForgotPassword');
-        return;
-      }
-
-      await resetPassword(
+      await resetPasswordMutation.mutateAsync({
         resetToken,
-        formData.password,
-        formData.confirmPassword
-      );
+        password: formData.password,
+        passwordConfirmation: formData.confirmPassword,
+      });
 
-      await clearResetData();
       setIsSuccess(true);
 
       setTimeout(() => {
@@ -102,12 +95,21 @@ export function ResetPasswordScreen({ navigation }: Props) {
       }, 2000);
     } catch (err: any) {
       setError(err?.message || 'Failed to reset password. Please try again.');
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const showPasswordValidation = formData.password.length > 0;
+
+  if (resetDataQuery.isLoading) {
+    return (
+      <SafeAreaView style={styles.successSafeArea}>
+        <View style={styles.successContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.successSubtitle}>Checking reset session...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (isSuccess) {
     return (
@@ -513,5 +515,6 @@ const styles = StyleSheet.create({
     color: Colors.textLight,
     textAlign: 'center',
     lineHeight: 20,
+    marginTop: Spacing.md,
   },
 });

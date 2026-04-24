@@ -30,13 +30,10 @@ import {
   TriangleAlert,
 } from 'lucide-react-native';
 import { AITipCard } from '../components/AITipCard';
-import {
-  generateTrainingPlan,
-  getLatestAcceptedWorkoutPlan,
-  modifyTrainingPlan,
-  type WorkoutExerciseItem,
-  type WorkoutPlanVersion,
-} from '../services/workout';
+import { type WorkoutExerciseItem } from '../services/workout';
+import { useLatestWorkoutPlanQuery } from '../hooks/training/queries/useLatestWorkoutPlanQuery';
+import { useGenerateTrainingPlanMutation } from '../hooks/training/mutations/useGenerateTrainingPlanMutation';
+import { useModifyTrainingPlanMutation } from '../hooks/training/mutations/useModifyTrainingPlanMutation';
 
 type DayGroup = {
   dayNumber: number;
@@ -76,10 +73,7 @@ const difficultyOptions: Array<{
 
 const painAreaOptions = ['elbow', 'shoulder', 'knee', 'lower back', 'wrist', 'ankle'];
 
-const levelColors: Record<
-  string,
-  { bg: string; border: string; text: string }
-> = {
+const levelColors: Record<string, { bg: string; border: string; text: string }> = {
   beginner: { bg: '#ECFDF3', border: '#A7F3D0', text: '#047857' },
   intermediate: { bg: '#EFF6FF', border: '#BFDBFE', text: '#1D4ED8' },
   advanced: { bg: '#FEF2F2', border: '#FECACA', text: '#B91C1C' },
@@ -143,16 +137,21 @@ function prettifyApiError(message?: string) {
 }
 
 export default function WorkoutScreen() {
+  const {
+    data: activePlan = null,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isRefetching,
+  } = useLatestWorkoutPlanQuery();
+
+  const generateMutation = useGenerateTrainingPlanMutation();
+  const modifyMutation = useModifyTrainingPlanMutation();
+
   const [selectedExercise, setSelectedExercise] = useState<WorkoutExerciseItem | null>(null);
   const [completedExercises, setCompletedExercises] = useState<Set<number>>(new Set());
   const [expandedDay, setExpandedDay] = useState<number | null>(1);
-
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [generateLoading, setGenerateLoading] = useState(false);
-  const [modifyLoading, setModifyLoading] = useState(false);
-
-  const [activePlan, setActivePlan] = useState<WorkoutPlanVersion | null>(null);
 
   const [modifyModalVisible, setModifyModalVisible] = useState(false);
   const [selectedPainAreas, setSelectedPainAreas] = useState<string[]>([]);
@@ -166,6 +165,10 @@ export default function WorkoutScreen() {
     message: '',
     type: 'info',
   });
+
+  const generateLoading = generateMutation.isPending;
+  const modifyLoading = modifyMutation.isPending;
+  const refreshing = isRefetching && !isLoading;
 
   const showAppAlert = (
     title: string,
@@ -184,34 +187,28 @@ export default function WorkoutScreen() {
     setAppAlert((prev) => ({ ...prev, visible: false }));
   };
 
-  const loadActivePlan = async (showLoader = true) => {
-    try {
-      if (showLoader) setLoading(true);
-      setRefreshing(!showLoader);
-
-      const plan = await getLatestAcceptedWorkoutPlan();
-      setActivePlan(plan);
-
-      const grouped = groupExercisesByDay(plan?.exercises ?? []);
-      if (grouped.length) {
-        setExpandedDay(grouped[0].dayNumber);
-      }
-    } catch (error: any) {
-      showAppAlert('Load Failed', prettifyApiError(error?.message), 'error');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  useEffect(() => {
-    loadActivePlan(true);
-  }, []);
-
   const dayGroups = useMemo(
     () => groupExercisesByDay(activePlan?.exercises ?? []),
     [activePlan]
   );
+
+  useEffect(() => {
+    if (isError) {
+      showAppAlert('Load Failed', prettifyApiError((error as Error)?.message), 'error');
+    }
+  }, [isError, error]);
+
+  useEffect(() => {
+    if (!dayGroups.length) {
+      return;
+    }
+
+    const expandedDayExists = dayGroups.some((day) => day.dayNumber === expandedDay);
+
+    if (!expandedDay || !expandedDayExists) {
+      setExpandedDay(dayGroups[0].dayNumber);
+    }
+  }, [dayGroups, expandedDay]);
 
   const currentExerciseNames = useMemo(() => {
     const names = (activePlan?.exercises ?? [])
@@ -236,10 +233,13 @@ export default function WorkoutScreen() {
 
   const isCompleted = (exerciseRowId: number) => completedExercises.has(exerciseRowId);
 
+  const handleRefresh = async () => {
+    await refetch();
+  };
+
   const handleGeneratePlan = async () => {
     try {
-      setGenerateLoading(true);
-      const response = await generateTrainingPlan();
+      const response = await generateMutation.mutateAsync();
 
       showAppAlert(
         'Plan Request Sent',
@@ -249,8 +249,6 @@ export default function WorkoutScreen() {
       );
     } catch (error: any) {
       showAppAlert('Generate Failed', prettifyApiError(error?.message), 'error');
-    } finally {
-      setGenerateLoading(false);
     }
   };
 
@@ -306,9 +304,7 @@ export default function WorkoutScreen() {
     }
 
     try {
-      setModifyLoading(true);
-
-      await modifyTrainingPlan({
+      await modifyMutation.mutateAsync({
         current_plan_id: String(activePlan.id),
         user_feedback: {
           pain_areas: selectedPainAreas,
@@ -329,12 +325,10 @@ export default function WorkoutScreen() {
       );
     } catch (error: any) {
       showAppAlert('Modify Failed', prettifyApiError(error?.message), 'error');
-    } finally {
-      setModifyLoading(false);
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#0D7D6D" />
@@ -380,7 +374,7 @@ export default function WorkoutScreen() {
               <TouchableOpacity
                 style={styles.refreshButton}
                 activeOpacity={0.8}
-                onPress={() => loadActivePlan(false)}
+                onPress={handleRefresh}
                 disabled={refreshing}
               >
                 {refreshing ? (
@@ -1461,7 +1455,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
-
   customAlertOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.42)',

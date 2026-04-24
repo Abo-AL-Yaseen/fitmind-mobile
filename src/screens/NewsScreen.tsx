@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -9,57 +9,42 @@ import {
   RefreshControl,
   Modal,
 } from 'react-native';
-import { Calendar, ArrowRight, Tag, X, User, Clock3 } from 'lucide-react-native';
+import { Calendar, ArrowRight, Tag, X, User } from 'lucide-react-native';
 import { AITipCard } from '../components/AITipCard';
-import { getPublicNews, type PublicNewsItem } from '../services/news';
+import type { PublicNewsItem } from '../services/news';
+import { usePublicNewsQuery } from '../hooks/news/queries/usePublicNewsQuery';
+
+const NEWS_PER_PAGE = 10;
 
 export default function NewsScreen() {
-  const [newsItems, setNewsItems] = useState<PublicNewsItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [generalError, setGeneralError] = useState('');
-
   const [currentPage, setCurrentPage] = useState(1);
-  const [lastPage, setLastPage] = useState(1);
-  const [from, setFrom] = useState<number | null>(null);
-  const [to, setTo] = useState<number | null>(null);
-  const [total, setTotal] = useState(0);
-
   const [selectedNews, setSelectedNews] = useState<PublicNewsItem | null>(null);
   const [detailsVisible, setDetailsVisible] = useState(false);
 
-  const loadNews = useCallback(async (page = 1, refreshing = false) => {
-    try {
-      if (refreshing) {
-        setIsRefreshing(true);
-      } else {
-        setIsLoading(true);
-      }
+  const {
+    data: response,
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = usePublicNewsQuery({
+    page: currentPage,
+    perPage: NEWS_PER_PAGE,
+  });
 
-      setGeneralError('');
+  const pagination = response?.data;
+  const newsItems = pagination?.data ?? [];
+  const lastPage = pagination?.last_page ?? 1;
+  const from = pagination?.from ?? null;
+  const to = pagination?.to ?? null;
+  const total = pagination?.total ?? 0;
 
-      const response = await getPublicNews(page, 10);
-      const pagination = response.data;
-
-      setNewsItems(pagination.data ?? []);
-      setCurrentPage(pagination.current_page ?? 1);
-      setLastPage(pagination.last_page ?? 1);
-      setFrom(pagination.from ?? null);
-      setTo(pagination.to ?? null);
-      setTotal(pagination.total ?? 0);
-    } catch (error: any) {
-      const message =
-        error?.message || 'Failed to load news. Please try again.';
-      setGeneralError(message);
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadNews(1);
-  }, [loadNews]);
+  const generalError =
+    error instanceof Error
+      ? error.message
+      : error
+        ? 'Failed to load news. Please try again.'
+        : '';
 
   const featuredNews = useMemo(() => {
     return newsItems.length > 0 ? newsItems[0] : null;
@@ -92,16 +77,12 @@ export default function NewsScreen() {
     const totalHours = Math.ceil(days * 24);
 
     if (totalHours < 24) {
-      return totalHours === 1
-        ? '1 hour left'
-        : `${totalHours} hours left`;
+      return totalHours === 1 ? '1 hour left' : `${totalHours} hours left`;
     }
 
     const totalDays = Math.ceil(days);
 
-    return totalDays === 1
-      ? '1 day left'
-      : `${totalDays} days left`;
+    return totalDays === 1 ? '1 day left' : `${totalDays} days left`;
   }
 
   function formatDateTime(value: string | null): string {
@@ -124,19 +105,19 @@ export default function NewsScreen() {
     setSelectedNews(null);
   }
 
-  function handleRefresh() {
-    loadNews(currentPage, true);
-  }
+  const handleRefresh = useCallback(() => {
+    refetch();
+  }, [refetch]);
 
   function handlePreviousPage() {
     if (currentPage > 1) {
-      loadNews(currentPage - 1);
+      setCurrentPage((page) => page - 1);
     }
   }
 
   function handleNextPage() {
     if (currentPage < lastPage) {
-      loadNews(currentPage + 1);
+      setCurrentPage((page) => page + 1);
     }
   }
 
@@ -146,7 +127,7 @@ export default function NewsScreen() {
         style={styles.container}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
+          <RefreshControl refreshing={isFetching} onRefresh={handleRefresh} />
         }
       >
         <View style={styles.content}>
@@ -167,7 +148,7 @@ export default function NewsScreen() {
               <TouchableOpacity
                 style={styles.retryButton}
                 activeOpacity={0.8}
-                onPress={() => loadNews(1)}
+                onPress={() => refetch()}
               >
                 <Text style={styles.retryButtonText}>Try Again</Text>
               </TouchableOpacity>
@@ -330,7 +311,8 @@ export default function NewsScreen() {
                     <Text
                       style={[
                         styles.paginationButtonText,
-                        currentPage === lastPage && styles.paginationButtonTextDisabled,
+                        currentPage === lastPage &&
+                          styles.paginationButtonTextDisabled,
                       ]}
                     >
                       Next
@@ -361,7 +343,9 @@ export default function NewsScreen() {
                 <Text style={styles.modalSubtitle}>Full news details</Text>
 
                 <View style={styles.modalStatusBadge}>
-                  <Text style={styles.modalStatusBadgeText}>{selectedNews.status}</Text>
+                  <Text style={styles.modalStatusBadgeText}>
+                    {selectedNews.status}
+                  </Text>
                 </View>
 
                 <View style={styles.modalMetaRow}>
@@ -398,7 +382,8 @@ export default function NewsScreen() {
                   <View style={styles.detailBox}>
                     <Text style={styles.detailLabel}>Remaining</Text>
                     <Text style={styles.detailValue}>
-                      {getRemainingDaysText(selectedNews.remaining_days) || 'No expiry'}
+                      {getRemainingDaysText(selectedNews.remaining_days) ||
+                        'No expiry'}
                     </Text>
                   </View>
 

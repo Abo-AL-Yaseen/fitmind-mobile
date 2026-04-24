@@ -10,7 +10,6 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as SecureStore from 'expo-secure-store';
 import {
   User,
   Lock,
@@ -22,17 +21,12 @@ import {
 } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 
-import { logout } from '../services/auth';
-import {
-  getCurrentUserGoal,
-  upsertCurrentUserGoal,
-  type UserGoal,
-} from '../services/userGoals';
-import {
-  getMyProfile,
-  saveMyProfile,
-  type ProfileApiData,
-} from '../services/profile';
+import { useMyProfileQuery } from '../hooks/profile/queries/useMyProfileQuery';
+import { useSaveMyProfileMutation } from '../hooks/profile/mutations/useSaveMyProfileMutation';
+import { useCurrentUserGoalQuery } from '../hooks/userGoals/queries/useCurrentUserGoalQuery';
+import { useUpsertCurrentUserGoalMutation } from '../hooks/userGoals/mutations/useUpsertCurrentUserGoalMutation';
+import { useStoredAuthQuery } from '../hooks/auth/queries/useStoredAuthQuery';
+import { useLogoutMutation } from '../hooks/auth/mutations/useLogoutMutation';
 
 type ToastState = {
   visible: boolean;
@@ -50,16 +44,18 @@ const GOAL_OPTIONS = [
 export default function SettingsScreen() {
   const navigation = useNavigation<any>();
 
-  const [loading, setLoading] = useState(true);
-  const [savingGoal, setSavingGoal] = useState(false);
-  const [savingProfile, setSavingProfile] = useState(false);
-  const [loggingOut, setLoggingOut] = useState(false);
+  const authQuery = useStoredAuthQuery();
+  const profileQuery = useMyProfileQuery();
+  const currentGoalQuery = useCurrentUserGoalQuery();
+
+  const saveProfileMutation = useSaveMyProfileMutation();
+  const saveGoalMutation = useUpsertCurrentUserGoalMutation();
+  const logoutMutation = useLogoutMutation();
+
   const [editMode, setEditMode] = useState(false);
 
-  const [userName, setUserName] = useState('');
-  const [userEmail, setUserEmail] = useState('');
-
-  const [profileData, setProfileData] = useState<ProfileApiData | null>(null);
+  const [profileFormInitialized, setProfileFormInitialized] = useState(false);
+  const [goalFormInitialized, setGoalFormInitialized] = useState(false);
 
   const [profileFields, setProfileFields] = useState({
     height: '',
@@ -71,9 +67,7 @@ export default function SettingsScreen() {
     medical_conditions: '',
   });
 
-  const [currentGoalRecord, setCurrentGoalRecord] = useState<UserGoal | null>(null);
   const [goalType, setGoalType] = useState('weight_loss');
-  const [goalTypeIndex, setGoalTypeIndex] = useState(0);
   const [targetWeight, setTargetWeight] = useState('');
 
   const [notifications, setNotifications] = useState({
@@ -89,13 +83,65 @@ export default function SettingsScreen() {
     type: 'success',
   });
 
-  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
-    setToast({ visible: true, message, type });
+  const userName = authQuery.data?.userName ?? '';
+  const userEmail = authQuery.data?.email ?? '';
+  const profileData = profileQuery.data ?? null;
+  const currentGoalRecord = currentGoalQuery.data ?? null;
 
-    setTimeout(() => {
-      setToast((prev) => ({ ...prev, visible: false }));
-    }, 2500);
-  }, []);
+  const loading =
+    authQuery.isLoading || profileQuery.isLoading || currentGoalQuery.isLoading;
+
+  const savingProfile = saveProfileMutation.isPending;
+  const savingGoal = saveGoalMutation.isPending;
+  const loggingOut = logoutMutation.isPending;
+
+  const showToast = useCallback(
+    (message: string, type: 'success' | 'error' = 'success') => {
+      setToast({ visible: true, message, type });
+
+      setTimeout(() => {
+        setToast((prev) => ({ ...prev, visible: false }));
+      }, 2500);
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (profileQuery.isError) {
+      showToast('Failed to load profile.', 'error');
+    }
+  }, [profileQuery.isError, showToast]);
+
+  useEffect(() => {
+    if (currentGoalQuery.isError) {
+      showToast('Failed to load fitness goal.', 'error');
+    }
+  }, [currentGoalQuery.isError, showToast]);
+
+  useEffect(() => {
+    if (!profileData || profileFormInitialized) return;
+
+    setProfileFields({
+      height: profileData.height != null ? String(profileData.height) : '',
+      weight: profileData.weight != null ? String(profileData.weight) : '',
+      age: profileData.age != null ? String(profileData.age) : '',
+      gender: profileData.gender ?? 'male',
+      preferences: profileData.preferences ?? '',
+      food_allergies: profileData.food_allergies ?? '',
+      medical_conditions: profileData.medical_conditions ?? '',
+    });
+
+    setProfileFormInitialized(true);
+  }, [profileData, profileFormInitialized]);
+
+  useEffect(() => {
+    if (!currentGoalRecord || goalFormInitialized) return;
+
+    setGoalType(String(currentGoalRecord.goal_type ?? 'weight_loss'));
+    setTargetWeight(String(currentGoalRecord.target_weight ?? ''));
+
+    setGoalFormInitialized(true);
+  }, [currentGoalRecord, goalFormInitialized]);
 
   const initials = useMemo(() => {
     const name = userName?.trim();
@@ -107,65 +153,13 @@ export default function SettingsScreen() {
     return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`.toUpperCase();
   }, [userName]);
 
-  const loadScreenData = useCallback(async () => {
-    try {
-      setLoading(true);
-
-      const [storedName, storedEmail] = await Promise.all([
-        SecureStore.getItemAsync('fitmind_user_name'),
-        SecureStore.getItemAsync('fitmind_email'),
-      ]);
-
-      setUserName(storedName ?? '');
-      setUserEmail(storedEmail ?? '');
-
-      try {
-        const profile = await getMyProfile();
-
-        if (profile) {
-          setProfileData(profile);
-          setProfileFields({
-            height: profile.height != null ? String(profile.height) : '',
-            weight: profile.weight != null ? String(profile.weight) : '',
-            age: profile.age != null ? String(profile.age) : '',
-            gender: profile.gender ?? 'male',
-            preferences: profile.preferences ?? '',
-            food_allergies: profile.food_allergies ?? '',
-            medical_conditions: profile.medical_conditions ?? '',
-          });
-        }
-      } catch (error) {
-        showToast('Failed to load profile.', 'error');
-      }
-
-      try {
-        const userGoal = await getCurrentUserGoal();
-
-        if (userGoal) {
-          setCurrentGoalRecord(userGoal);
-          setGoalType(String(userGoal.goal_type ?? 'weight_loss'));
-          setTargetWeight(String(userGoal.target_weight ?? ''));
-        }
-      } catch (error) {
-        showToast('Failed to load fitness goal.', 'error');
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [showToast]);
-
-  useEffect(() => {
-    loadScreenData();
-  }, [loadScreenData]);
-
-  useEffect(() => {
+  const goalTypeIndex = useMemo(() => {
     const index = GOAL_OPTIONS.findIndex((item) => item.value === goalType);
-    if (index >= 0) setGoalTypeIndex(index);
+    return index >= 0 ? index : 0;
   }, [goalType]);
 
   const cycleGoalType = () => {
     const nextIndex = (goalTypeIndex + 1) % GOAL_OPTIONS.length;
-    setGoalTypeIndex(nextIndex);
     setGoalType(GOAL_OPTIONS[nextIndex].value);
   };
 
@@ -178,27 +172,24 @@ export default function SettingsScreen() {
     }
 
     try {
-      setSavingGoal(true);
-
-      const savedGoal = await upsertCurrentUserGoal({
+      const savedGoal = await saveGoalMutation.mutateAsync({
         goal_type: goalType,
         target_weight: parsedWeight,
       });
 
-      setCurrentGoalRecord(savedGoal);
+      setGoalType(String(savedGoal.goal_type ?? goalType));
+      setTargetWeight(String(savedGoal.target_weight ?? parsedWeight));
+      setGoalFormInitialized(true);
+
       showToast('Fitness goal updated successfully.');
     } catch (error: any) {
       showToast(error?.message || 'Failed to update fitness goal.', 'error');
-    } finally {
-      setSavingGoal(false);
     }
   };
 
   const handleSaveProfile = async () => {
     try {
-      setSavingProfile(true);
-
-      const savedProfile = await saveMyProfile({
+      const savedProfile = await saveProfileMutation.mutateAsync({
         age: profileFields.age ? Number(profileFields.age) : null,
         height: profileFields.height ? Number(profileFields.height) : null,
         weight: profileFields.weight ? Number(profileFields.weight) : null,
@@ -209,20 +200,29 @@ export default function SettingsScreen() {
         medical_conditions: profileFields.medical_conditions,
       });
 
-      setProfileData(savedProfile);
+      if (savedProfile) {
+        setProfileFields({
+          height: savedProfile.height != null ? String(savedProfile.height) : '',
+          weight: savedProfile.weight != null ? String(savedProfile.weight) : '',
+          age: savedProfile.age != null ? String(savedProfile.age) : '',
+          gender: savedProfile.gender ?? 'male',
+          preferences: savedProfile.preferences ?? '',
+          food_allergies: savedProfile.food_allergies ?? '',
+          medical_conditions: savedProfile.medical_conditions ?? '',
+        });
+      }
+
+      setProfileFormInitialized(true);
       setEditMode(false);
       showToast('Profile updated successfully.');
     } catch (error: any) {
       showToast(error?.message || 'Failed to update profile.', 'error');
-    } finally {
-      setSavingProfile(false);
     }
   };
 
   const handleSignOut = async () => {
     try {
-      setLoggingOut(true);
-      await logout();
+      await logoutMutation.mutateAsync();
 
       showToast('Signed out successfully.');
 
@@ -234,8 +234,6 @@ export default function SettingsScreen() {
       }, 700);
     } catch (error: any) {
       showToast(error?.message || 'Logout failed.', 'error');
-    } finally {
-      setLoggingOut(false);
     }
   };
 

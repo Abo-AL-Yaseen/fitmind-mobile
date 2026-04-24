@@ -18,11 +18,9 @@ import {
   Check,
   CircleAlert,
 } from 'lucide-react-native';
-import {
-  getMyProfile,
-  saveMyProfile,
-  type ProfilePayload,
-} from '../services/profile';
+import type { ProfilePayload } from '../services/profile';
+import { useMyProfileQuery } from '../hooks/profile/queries/useMyProfileQuery';
+import { useSaveMyProfileMutation } from '../hooks/profile/mutations/useSaveMyProfileMutation';
 
 type FormState = {
   age: string;
@@ -57,11 +55,6 @@ const genderOptions = ['male', 'female'];
 const activityOptions = ['low', 'moderate', 'high'];
 
 export default function ProfileScreen({ navigation }: any) {
-  const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [profileExists, setProfileExists] = useState(false);
-  const [showMissingProfileMessage, setShowMissingProfileMessage] =
-    useState(false);
   const [formData, setFormData] = useState<FormState>(initialFormData);
 
   const [toast, setToast] = useState<ToastState>({
@@ -71,19 +64,58 @@ export default function ProfileScreen({ navigation }: any) {
     message: '',
   });
 
+  const {
+    data: profile,
+    isLoading,
+    error,
+  } = useMyProfileQuery();
+
+  const saveProfileMutation = useSaveMyProfileMutation();
+
   const toastTranslateY = useRef(new Animated.Value(120)).current;
   const toastOpacity = useRef(new Animated.Value(0)).current;
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const goBackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    loadProfile();
+  const profileExists = !!profile;
+  const showMissingProfileMessage = !isLoading && !profile;
+  const isSaving = saveProfileMutation.isPending;
 
+  useEffect(() => {
     return () => {
       if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
       if (goBackTimerRef.current) clearTimeout(goBackTimerRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (profile) {
+      setFormData({
+        age: profile.age != null ? String(profile.age) : '',
+        height: profile.height != null ? String(profile.height) : '',
+        weight: profile.weight != null ? String(profile.weight) : '',
+        gender: profile.gender || 'male',
+        activityLevel: profile.activity_level || 'moderate',
+        preferences: profile.preferences || '',
+        foodAllergies: profile.food_allergies || '',
+        medicalConditions: profile.medical_conditions || '',
+      });
+    } else if (!isLoading) {
+      setFormData(initialFormData);
+    }
+  }, [profile, isLoading]);
+
+  useEffect(() => {
+    if (error) {
+      showToast(
+        'error',
+        'Error',
+        error instanceof Error
+          ? error.message
+          : 'Failed to load profile information.'
+      );
+    }
+  }, [error]);
 
   const saveButtonLabel = useMemo(() => {
     if (isSaving) return 'Saving...';
@@ -145,41 +177,6 @@ export default function ProfileScreen({ navigation }: any) {
     }
   };
 
-  const loadProfile = async () => {
-    try {
-      setIsLoading(true);
-      setShowMissingProfileMessage(false);
-
-      const profile = await getMyProfile();
-
-      if (profile) {
-        setProfileExists(true);
-        setFormData({
-          age: profile.age != null ? String(profile.age) : '',
-          height: profile.height != null ? String(profile.height) : '',
-          weight: profile.weight != null ? String(profile.weight) : '',
-          gender: profile.gender || 'male',
-          activityLevel: profile.activity_level || 'moderate',
-          preferences: profile.preferences || '',
-          foodAllergies: profile.food_allergies || '',
-          medicalConditions: profile.medical_conditions || '',
-        });
-      } else {
-        setProfileExists(false);
-        setShowMissingProfileMessage(true);
-        setFormData(initialFormData);
-      }
-    } catch (error: any) {
-      showToast(
-        'error',
-        'Error',
-        error?.message || 'Failed to load profile information.'
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const updateField = (key: keyof FormState, value: string) => {
     setFormData((prev) => ({
       ...prev,
@@ -229,12 +226,7 @@ export default function ProfileScreen({ navigation }: any) {
     if (!validateForm()) return;
 
     try {
-      setIsSaving(true);
-
-      await saveMyProfile(buildPayload());
-
-      setProfileExists(true);
-      setShowMissingProfileMessage(false);
+      await saveProfileMutation.mutateAsync(buildPayload());
 
       showToast(
         'success',
@@ -250,8 +242,6 @@ export default function ProfileScreen({ navigation }: any) {
         'Save failed',
         error?.message || 'Failed to save profile.'
       );
-    } finally {
-      setIsSaving(false);
     }
   };
 

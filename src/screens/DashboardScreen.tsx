@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -23,36 +23,20 @@ import {
 import { quickLinks } from '../data/dashboardData';
 import { StatCard } from '../components/StatCard';
 import { ProgressBar } from '../components/ProgressBar';
-import { getDashboardSummary, type DashboardSummary } from '../services/dashboard';
+import { useDashboardSummaryQuery } from '../hooks/dashboard/queries/useDashboardSummaryQuery';
 
 export default function DashboardScreen({ navigation }: any) {
-  const [summary, setSummary] = useState<DashboardSummary | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: summary,
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useDashboardSummaryQuery();
 
-  const loadDashboard = useCallback(async (isRefresh = false) => {
-    try {
-      if (isRefresh) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
-
-      setError(null);
-      const result = await getDashboardSummary();
-      setSummary(result);
-    } catch (err: any) {
-      setError(err?.message ?? 'Failed to load dashboard.');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadDashboard();
-  }, [loadDashboard]);
+  const handleRefresh = useCallback(() => {
+    refetch();
+  }, [refetch]);
 
   const today = useMemo(
     () =>
@@ -93,7 +77,7 @@ export default function DashboardScreen({ navigation }: any) {
     []
   );
 
-  if (loading) {
+  if (isLoading) {
     return (
       <View style={styles.centerState}>
         <ActivityIndicator size="large" color="#0D7D6D" />
@@ -106,8 +90,10 @@ export default function DashboardScreen({ navigation }: any) {
     return (
       <View style={styles.centerState}>
         <Text style={styles.errorTitle}>Couldn’t load dashboard</Text>
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={() => loadDashboard()}>
+        <Text style={styles.errorText}>
+          {error instanceof Error ? error.message : 'Failed to load dashboard.'}
+        </Text>
+        <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
           <Text style={styles.retryButtonText}>Try Again</Text>
         </TouchableOpacity>
       </View>
@@ -122,7 +108,7 @@ export default function DashboardScreen({ navigation }: any) {
       style={styles.container}
       showsVerticalScrollIndicator={false}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={() => loadDashboard(true)} />
+        <RefreshControl refreshing={isFetching} onRefresh={handleRefresh} />
       }
     >
       <View style={styles.content}>
@@ -214,6 +200,7 @@ export default function DashboardScreen({ navigation }: any) {
           <View style={styles.quickLinksGrid}>
             {filteredQuickLinks.map((link) => {
               const LinkIcon = iconMap[link.icon];
+
               return (
                 <TouchableOpacity
                   key={link.path}
