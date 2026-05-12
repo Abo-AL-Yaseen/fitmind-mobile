@@ -37,6 +37,7 @@ import ProgressScreen from '../screens/ProgressScreen';
 import NewsScreen from '../screens/NewsScreen';
 import FeedbackScreen from '../screens/FeedbackScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import ManageInjuriesScreen from '../screens/ManageInjuriesScreen';
 import { ChangePasswordScreen } from '../screens/ChangePasswordScreen';
 import { Colors } from '../constants/theme';
 
@@ -47,6 +48,7 @@ export type RootStackParamList = {
   ChangePassword: undefined;
   MainTabs: undefined;
   Profile: undefined;
+  ManageInjuries: undefined;
   Feedback: undefined;
   Settings: undefined;
   News: undefined;
@@ -210,6 +212,14 @@ export default function Navigation() {
         <Stack.Screen
           name="Profile"
           component={ProfileScreen}
+          options={{
+            headerShown: false,
+          }}
+        />
+
+        <Stack.Screen
+          name="ManageInjuries"
+          component={ManageInjuriesScreen}
           options={{
             headerShown: false,
           }}

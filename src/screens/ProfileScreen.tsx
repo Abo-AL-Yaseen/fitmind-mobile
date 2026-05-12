@@ -17,6 +17,8 @@ import {
   ArrowLeft,
   Check,
   CircleAlert,
+  ChevronRight,
+  HeartPulse,
 } from 'lucide-react-native';
 import type { ProfilePayload } from '../services/profile';
 import { useMyProfileQuery } from '../hooks/profile/queries/useMyProfileQuery';
@@ -457,6 +459,25 @@ export default function ProfileScreen({ navigation }: any) {
                 Share relevant medical conditions for personalized guidance
               </Text>
             </View>
+
+            <TouchableOpacity
+              style={styles.manageInjuriesButton}
+              onPress={() => navigation.navigate('ManageInjuries')}
+              activeOpacity={0.8}
+            >
+              <View style={styles.manageInjuriesIcon}>
+                <HeartPulse color="#0D7D6D" size={16} />
+              </View>
+
+              <View style={styles.manageInjuriesTextWrap}>
+                <Text style={styles.manageInjuriesTitle}>Manage Injuries</Text>
+                <Text style={styles.manageInjuriesSubtitle}>
+                  Add or update injury notes
+                </Text>
+              </View>
+
+              <ChevronRight color="#9CA3AF" size={18} />
+            </TouchableOpacity>
           </View>
 
           <TouchableOpacity
@@ -639,6 +660,38 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginTop: 6,
     lineHeight: 18,
+  },
+  manageInjuriesButton: {
+    minHeight: 58,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB',
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  manageInjuriesIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: '#E6F4F1',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  manageInjuriesTextWrap: {
+    flex: 1,
+  },
+  manageInjuriesTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  manageInjuriesSubtitle: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
   },
   row: {
     flexDirection: 'row',
