@@ -17,6 +17,8 @@ import {
 } from '@react-navigation/bottom-tabs';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
+  CalendarDays,
+  ClipboardList,
   Dumbbell,
   Home,
   Apple,
@@ -34,6 +36,8 @@ import ProfileScreen from '../screens/ProfileScreen';
 import WorkoutScreen from '../screens/WorkoutScreen';
 import NutritionScreen from '../screens/NutritionScreen';
 import ProgressScreen from '../screens/ProgressScreen';
+import SessionsScreen from '../screens/SessionsScreen';
+import MyScheduleScreen from '../screens/MyScheduleScreen';
 import NewsScreen from '../screens/NewsScreen';
 import FeedbackScreen from '../screens/FeedbackScreen';
 import SettingsScreen from '../screens/SettingsScreen';
@@ -56,6 +60,8 @@ export type RootStackParamList = {
 
 export type TabParamList = {
   Dashboard: undefined;
+  Sessions: undefined;
+  Schedule: undefined;
   Workout: undefined;
   Nutrition: undefined;
   Progress: undefined;
@@ -109,6 +115,8 @@ function MobileTopBar() {
 function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   const iconMap = {
     Dashboard: Home,
+    Sessions: CalendarDays,
+    Schedule: ClipboardList,
     Workout: Dumbbell,
     Nutrition: Apple,
     Progress: TrendingUp,
@@ -116,6 +124,8 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
 
   const labelMap = {
     Dashboard: 'Home',
+    Sessions: 'Sessions',
+    Schedule: 'Schedule',
     Workout: 'Workout',
     Nutrition: 'Nutrition',
     Progress: 'Progress',
@@ -189,6 +199,8 @@ function MainTabs() {
       }}
     >
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
+      <Tab.Screen name="Sessions" component={SessionsScreen} />
+      <Tab.Screen name="Schedule" component={MyScheduleScreen} />
       <Tab.Screen name="Workout" component={WorkoutScreen} />
       <Tab.Screen name="Nutrition" component={NutritionScreen} />
       <Tab.Screen name="Progress" component={ProgressScreen} />
@@ -352,19 +364,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tabItemInner: {
-    minWidth: 74,
+    minWidth: 52,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 7,
-    paddingHorizontal: 10,
-    borderRadius: 18,
+    paddingHorizontal: 5,
+    borderRadius: 16,
   },
   tabItemInnerActive: {
     backgroundColor: '#E6F4F1',
   },
   tabLabel: {
     marginTop: 4,
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '600',
     color: '#9CA3AF',
   },

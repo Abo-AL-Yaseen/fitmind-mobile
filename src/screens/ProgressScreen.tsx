@@ -118,6 +118,7 @@ export default function ProgressScreen() {
             }}
             width={screenWidth - 72}
             height={160}
+            yAxisLabel=""
             yAxisSuffix="%"
             chartConfig={{
               backgroundColor: '#FFFFFF',

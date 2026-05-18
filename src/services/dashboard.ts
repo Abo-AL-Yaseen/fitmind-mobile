@@ -88,7 +88,7 @@ export interface DashboardSummary {
 
   activeWorkoutPlansCount: number;
   activeNutritionPlanName: string;
-  activeNutritionGoal: string;
+  activeNutritionGoal: string | null;
   nutritionVersionId: number | null;
   mealItemsCount: number;
   distinctMealTypesCount: number;
@@ -120,9 +120,10 @@ function toNumber(value: unknown, fallback = 0): number {
   return Number.isFinite(num) ? num : fallback;
 }
 
-function normalizeGoalLabel(value: string | null | undefined): string {
-  if (!value) return 'No Goal';
-  return String(value)
+function normalizeGoalLabel(value: string | null | undefined): string | null {
+  const raw = String(value ?? '').trim();
+  if (!raw) return null;
+  return raw
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
@@ -333,9 +334,11 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
   return {
     userName: displayUserName,
     heroTitle: `Welcome back, ${displayUserName}! 👋`,
-    heroGoalText: activeNutritionVersion
-      ? `Your focus is ${goalLabel.toLowerCase()}. You have ${activeWorkoutPlansCount} active workout plan${activeWorkoutPlansCount === 1 ? '' : 's'} and a ${targetCalories} kcal nutrition target today.`
-      : `Your focus is ${goalLabel.toLowerCase()}. Keep moving and stay consistent today.`,
+    heroGoalText: goalLabel
+      ? activeNutritionVersion
+        ? `Your focus is ${goalLabel.toLowerCase()}. You have ${activeWorkoutPlansCount} active workout plan${activeWorkoutPlansCount === 1 ? '' : 's'} and a ${targetCalories} kcal nutrition target today.`
+        : `Your focus is ${goalLabel.toLowerCase()}. Keep moving and stay consistent today.`
+      : 'Set your fitness goal to personalize your workout and nutrition guidance.',
 
     quickStats: [
       {

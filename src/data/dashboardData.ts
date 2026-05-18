@@ -1,5 +1,7 @@
 export const quickLinks = [
   { path: "Profile", icon: "User", label: "My Profile", color: "#0D7D6D", bg: "#E6F4F1" },
+  { path: "Sessions", icon: "CalendarDays", label: "Book a Session", color: "#0D7D6D", bg: "#E6F4F1" },
+  { path: "Schedule", icon: "ClipboardList", label: "My Schedule", color: "#3B82F6", bg: "#EFF6FF" },
   { path: "Workout", icon: "Dumbbell", label: "Workouts", color: "#0D7D6D", bg: "#E6F4F1" },
   { path: "Nutrition", icon: "Apple", label: "Nutrition", color: "#F97316", bg: "#FFF7ED" },
   { path: "Progress", icon: "TrendingUp", label: "Progress", color: "#3B82F6", bg: "#EFF6FF" },

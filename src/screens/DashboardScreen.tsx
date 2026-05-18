@@ -19,6 +19,8 @@ import {
   ChevronRight,
   ShieldCheck,
   User,
+  CalendarDays,
+  ClipboardList,
 } from 'lucide-react-native';
 import { quickLinks } from '../data/dashboardData';
 import { StatCard } from '../components/StatCard';
@@ -64,6 +66,8 @@ export default function DashboardScreen({ navigation }: any) {
     MessageCircle,
     Flame,
     Trophy,
+    CalendarDays,
+    ClipboardList,
   };
 
   const filteredQuickLinks = useMemo(
@@ -102,6 +106,7 @@ export default function DashboardScreen({ navigation }: any) {
 
   const quickStats = summary?.quickStats ?? [];
   const todayProgress = summary?.todayProgress ?? [];
+  const goalChipLabel = summary?.activeNutritionGoal ?? 'Set Goal';
 
   return (
     <ScrollView
@@ -124,11 +129,15 @@ export default function DashboardScreen({ navigation }: any) {
           </View>
 
           <View style={styles.heroMetaRow}>
-            <View style={styles.heroMetaBadge}>
+            <TouchableOpacity
+              style={styles.heroMetaBadge}
+              activeOpacity={0.75}
+              onPress={() => navigation.navigate('Settings')}
+            >
               <Text style={styles.heroMetaBadgeText}>
-                Goal: {summary?.activeNutritionGoal ?? 'No Goal'}
+                Goal: {goalChipLabel}
               </Text>
-            </View>
+            </TouchableOpacity>
 
             <View style={styles.heroMetaBadge}>
               <Text style={styles.heroMetaBadgeText}>
