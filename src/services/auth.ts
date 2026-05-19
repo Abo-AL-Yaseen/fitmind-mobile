@@ -36,6 +36,12 @@ export interface ApiMessageResponse {
   message: string;
 }
 
+export interface ChangePasswordPayload {
+  current_password: string;
+  password: string;
+  password_confirmation: string;
+}
+
 export interface VerifyOtpResponse {
   message: string;
   reset_token: string;
@@ -57,6 +63,15 @@ export async function forgotPassword(email: string): Promise<ApiMessageResponse>
   return apiFetch<ApiMessageResponse>('/forgot-password', {
     method: 'POST',
     body: JSON.stringify({ email }),
+  });
+}
+
+export async function changePassword(
+  payload: ChangePasswordPayload
+): Promise<ApiMessageResponse> {
+  return apiFetch<ApiMessageResponse>('/change-password', {
+    method: 'POST',
+    body: JSON.stringify(payload),
   });
 }
 

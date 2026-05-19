@@ -15,10 +15,14 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import type { RootStackParamList } from '../navigation/Navigation';
 import { Colors, Spacing, BorderRadius, FontSizes } from '../constants/theme';
+import { useChangePasswordMutation } from '../hooks/auth/mutations/useChangePasswordMutation';
+import { clearAuth } from '../services/auth';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ChangePassword'>;
 
 export function ChangePasswordScreen({ navigation }: Props) {
+  const changePasswordMutation = useChangePasswordMutation();
+
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -80,10 +84,30 @@ export function ChangePasswordScreen({ navigation }: Props) {
     try {
       setIsLoading(true);
 
-      // لا يوجد endpoint حاليًا
-      await new Promise((resolve) => setTimeout(resolve, 600));
+      await changePasswordMutation.mutateAsync({
+        current_password: formData.currentPassword,
+        password: formData.newPassword,
+        password_confirmation: formData.confirmPassword,
+      });
 
-      showToast('Change password API is not connected yet.', 'error');
+      setFormData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+
+      showToast(
+        'Password changed successfully. Please login again.',
+        'success'
+      );
+
+      await clearAuth();
+
+      setTimeout(() => {
+        navigation.replace('Login');
+      }, 1200);
+    } catch (error: any) {
+      showToast(error?.message || 'Failed to change password.', 'error');
     } finally {
       setIsLoading(false);
     }
