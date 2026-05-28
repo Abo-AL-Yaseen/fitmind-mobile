@@ -1,6 +1,6 @@
 import * as SecureStore from "expo-secure-store";
 
-const API_BASE_URL = "https://afdd-2a02-6680-210f-a4c-cc24-3186-656d-f68f.ngrok-free.app/api";
+const API_BASE_URL = "https://3d64-2a02-6680-1106-54d-147f-dcbd-69ff-4601.ngrok-free.app/api";
 
 export async function apiFetch<T>(
   endpoint: string,
