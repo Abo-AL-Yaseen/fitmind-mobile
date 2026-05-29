@@ -18,6 +18,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/Navigation';
 import { Colors, Spacing, BorderRadius, FontSizes } from '../constants/theme';
 import { useLoginMutation } from '../hooks/auth/mutations/useLoginMutation';
+import { registerForPushNotificationsAsync } from '../services/notifications';
+import { savePushToken } from '../services/pushTokens';
 
 type LoginScreenProps = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Login'>;
@@ -144,6 +146,16 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
         email: email.trim(),
         password,
       });
+
+      try {
+        const pushToken = await registerForPushNotificationsAsync();
+
+        if (pushToken) {
+          await savePushToken(pushToken);
+        }
+      } catch (error) {
+        console.warn('Push token registration failed:', error);
+      }
 
       showToast(
         'success',

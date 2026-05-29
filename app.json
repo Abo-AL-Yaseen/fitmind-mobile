@@ -22,13 +22,21 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.fitmind"
+      "package": "com.anonymous.fitmind",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-secure-store"
-    ]
+      "expo-secure-store",
+      "expo-notifications"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "eea6f96a-513a-4849-8413-a1752eb13cde"
+      }
+    },
+    "owner": "abo-al-yaseen"
   }
 }
