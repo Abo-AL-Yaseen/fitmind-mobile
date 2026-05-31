@@ -15,6 +15,38 @@ const WEEKDAYS = [
   'Saturday',
 ];
 
+const WEEKDAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+const MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+const MONTHS_SHORT = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+
 const CANCELLED_STATUSES = new Set(['cancelled', 'canceled']);
 const COMPLETED_STATUSES = new Set(['completed', 'complete', 'past']);
 
@@ -53,18 +85,161 @@ function getSessionRawDate(session?: CoachSession | null) {
   return String(raw ?? '').trim();
 }
 
-export function parseSessionDate(session?: CoachSession | null) {
-  const raw = getSessionRawDate(session);
+type CalendarParts = {
+  year: number;
+  month: number;
+  day: number;
+};
+
+function getCalendarPartsFromValue(value: unknown): CalendarParts | null {
+  const raw = String(value ?? '').trim();
   if (!raw) return null;
 
-  const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})/.exec(raw);
-  if (dateOnlyMatch) {
-    const [, year, month, day] = dateOnlyMatch;
-    return new Date(Number(year), Number(month) - 1, Number(day));
+  const match = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(raw);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+
+  if (
+    !Number.isInteger(year) ||
+    !Number.isInteger(month) ||
+    !Number.isInteger(day) ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31
+  ) {
+    return null;
   }
 
-  const date = new Date(raw);
-  return Number.isNaN(date.getTime()) ? null : date;
+  return { year, month, day };
+}
+
+function getSessionDateParts(session?: CoachSession | null) {
+  const key = getSessionCalendarKey(getSessionRawDate(session));
+  return key ? getCalendarPartsFromKey(key) : null;
+}
+
+function formatDateKey(parts: CalendarParts) {
+  return `${parts.year}-${String(parts.month).padStart(2, '0')}-${String(
+    parts.day
+  ).padStart(2, '0')}`;
+}
+
+function getCalendarPartsFromKey(key: string) {
+  return getCalendarPartsFromValue(key);
+}
+
+function getWeekdayIndex(parts: CalendarParts) {
+  let year = parts.year;
+  const month = parts.month;
+  const offsets = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4];
+
+  if (month < 3) year -= 1;
+
+  return (
+    year +
+    Math.floor(year / 4) -
+    Math.floor(year / 100) +
+    Math.floor(year / 400) +
+    offsets[month - 1] +
+    parts.day
+  ) % 7;
+}
+
+export function getCalendarKeyFromDate(date = new Date()) {
+  return formatDateKey({
+    year: date.getFullYear(),
+    month: date.getMonth() + 1,
+    day: date.getDate(),
+  });
+}
+
+function normalizeIsoDatetime(value: string) {
+  return value.replace(
+    /\.(\d{3})\d+(?=Z$|[+-]\d{2}:?\d{2}$)/,
+    '.$1'
+  );
+}
+
+export function getSessionCalendarKey(value: unknown) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+
+  const dateOnlyParts = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.test(raw)
+    ? getCalendarPartsFromValue(raw)
+    : null;
+
+  if (dateOnlyParts) return formatDateKey(dateOnlyParts);
+
+  const hasTimeOrTimezone =
+    /[Tt]/.test(raw) || /(?:Z|[+-]\d{2}:?\d{2})$/.test(raw);
+
+  if (hasTimeOrTimezone) {
+    const parsedDate = new Date(normalizeIsoDatetime(raw));
+    if (!Number.isNaN(parsedDate.getTime())) {
+      return getCalendarKeyFromDate(parsedDate);
+    }
+  }
+
+  const fallbackParts = getCalendarPartsFromValue(raw);
+  return fallbackParts ? formatDateKey(fallbackParts) : '';
+}
+
+export function addDaysToCalendarKey(key: string, days: number) {
+  const parts = getCalendarPartsFromKey(key);
+  if (!parts) return key;
+
+  const date = new Date(Date.UTC(parts.year, parts.month - 1, parts.day + days));
+
+  return formatDateKey({
+    year: date.getUTCFullYear(),
+    month: date.getUTCMonth() + 1,
+    day: date.getUTCDate(),
+  });
+}
+
+export function getStartOfWeekCalendarKey(date = new Date(), weekStartsOn = 0) {
+  const todayKey = getCalendarKeyFromDate(date);
+  const parts = getCalendarPartsFromKey(todayKey);
+  if (!parts) return todayKey;
+
+  const weekday = getWeekdayIndex(parts);
+  const offset = (weekday - weekStartsOn + 7) % 7;
+
+  return addDaysToCalendarKey(todayKey, -offset);
+}
+
+export function getCalendarDayNumber(key: string) {
+  return getCalendarPartsFromKey(key)?.day ?? 0;
+}
+
+export function formatCalendarWeekdayShort(key: string) {
+  const parts = getCalendarPartsFromKey(key);
+  if (!parts) return '';
+
+  return WEEKDAYS_SHORT[getWeekdayIndex(parts)];
+}
+
+export function formatCalendarDateLabel(key: string, length: 'short' | 'long') {
+  const parts = getCalendarPartsFromKey(key);
+  if (!parts) return key;
+
+  const weekday = WEEKDAYS[getWeekdayIndex(parts)];
+  const month = length === 'long' ? MONTHS[parts.month - 1] : MONTHS_SHORT[parts.month - 1];
+
+  return length === 'long'
+    ? `${weekday}, ${month} ${parts.day}`
+    : `${WEEKDAYS_SHORT[getWeekdayIndex(parts)]}, ${month} ${parts.day}`;
+}
+
+export function parseSessionDate(session?: CoachSession | null) {
+  const parts = getSessionDateParts(session);
+  if (!parts) return null;
+
+  return new Date(parts.year, parts.month - 1, parts.day);
 }
 
 export function formatTimeValue(value: unknown) {
@@ -111,36 +286,37 @@ export function getDayLabel(value: unknown) {
 }
 
 export function formatSessionDate(session?: CoachSession | null) {
-  const date = parseSessionDate(session);
+  const key = getSessionDateKey(session);
 
-  if (date) {
-    return date.toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-    });
+  if (!key.startsWith('weekday-') && key !== 'date-tbd') {
+    return formatCalendarDateLabel(key, 'short');
   }
+
+  const raw = getSessionRawDate(session);
+  if (raw) return raw.includes('T') ? raw : raw.slice(0, 10);
 
   return getDayLabel(session?.day_of_week);
 }
 
 export function formatSessionDateLong(session?: CoachSession | null) {
-  const date = parseSessionDate(session);
+  const key = getSessionDateKey(session);
 
-  if (date) {
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
-    });
+  if (!key.startsWith('weekday-') && key !== 'date-tbd') {
+    return formatCalendarDateLabel(key, 'long');
   }
+
+  const raw = getSessionRawDate(session);
+  if (raw) return raw.includes('T') ? raw : raw.slice(0, 10);
 
   return getDayLabel(session?.day_of_week);
 }
 
 export function getSessionDateKey(session?: CoachSession | null) {
+  const parts = getSessionDateParts(session);
+  if (parts) return formatDateKey(parts);
+
   const raw = getSessionRawDate(session);
-  if (raw) return raw.slice(0, 10);
+  if (raw) return raw.includes('T') ? raw : raw.slice(0, 10);
 
   if (session?.day_of_week != null) {
     return `weekday-${String(session.day_of_week)}`;

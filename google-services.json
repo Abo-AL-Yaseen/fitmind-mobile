@@ -1,13 +1,13 @@
-﻿{
+{
   "project_info": {
-    "project_number": "772378967809",
-    "project_id": "gymai-2d895",
-    "storage_bucket": "gymai-2d895.firebasestorage.app"
+    "project_number": "877904506566",
+    "project_id": "fitmind-17798",
+    "storage_bucket": "fitmind-17798.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:772378967809:android:96402d24c7433bc3b22500",
+        "mobilesdk_app_id": "1:877904506566:android:f39de2d5671937b3d5f1c7",
         "android_client_info": {
           "package_name": "com.anonymous.fitmind"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBjosgm0t1WIBfffB7iKjd-qwWxFB_MQVU"
+          "current_key": "AIzaSyA4ScYEgXB8ZYKsvr6Lhl0mjm1xauRYmzI"
         }
       ],
       "services": {

@@ -17,9 +17,13 @@ expo-env.d.ts
 *.p12
 *.key
 *.mobileprovision
+*service-account*.json
+*firebase-admin*.json
+*fcm*.json
 
 # Metro
 .metro-health-check*
+.codex-expo*.log
 
 # debug
 npm-debug.*

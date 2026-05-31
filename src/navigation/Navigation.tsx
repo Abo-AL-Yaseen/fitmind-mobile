@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
+  AppState,
   View,
   Text,
   StyleSheet,
@@ -8,6 +9,7 @@ import {
 } from 'react-native';
 import {
   NavigationContainer,
+  NavigatorScreenParams,
   useNavigation,
 } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -26,6 +28,7 @@ import {
   Settings,
   Newspaper,
   MessageSquare,
+  Bell,
 } from 'lucide-react-native';
 
 import { LoginScreen } from '../screens/LoginScreen';
@@ -41,22 +44,18 @@ import MyScheduleScreen from '../screens/MyScheduleScreen';
 import NewsScreen from '../screens/NewsScreen';
 import FeedbackScreen from '../screens/FeedbackScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
 import ManageInjuriesScreen from '../screens/ManageInjuriesScreen';
 import { ChangePasswordScreen } from '../screens/ChangePasswordScreen';
 import { Colors } from '../constants/theme';
-
-export type RootStackParamList = {
-  Login: undefined;
-  ForgotPassword: undefined;
-  ResetPassword: undefined;
-  ChangePassword: undefined;
-  MainTabs: undefined;
-  Profile: undefined;
-  ManageInjuries: undefined;
-  Feedback: undefined;
-  Settings: undefined;
-  News: undefined;
-};
+import {
+  navigationRef,
+} from './rootNavigation';
+import {
+  addNotificationResponseListener,
+  handleLastNotificationResponseAsync,
+} from '../services/notifications';
+import { useUnreadNotificationCountQuery } from '../hooks/userNotifications';
 
 export type TabParamList = {
   Dashboard: undefined;
@@ -67,13 +66,61 @@ export type TabParamList = {
   Progress: undefined;
 };
 
+export type NewsRouteParams = {
+  newsId?: string;
+  news_id?: string;
+  entityId?: string;
+  notificationId?: string;
+};
+
+export type RootStackParamList = {
+  Login: undefined;
+  ForgotPassword: undefined;
+  ResetPassword: undefined;
+  ChangePassword: undefined;
+  MainTabs: NavigatorScreenParams<TabParamList> | undefined;
+  Profile: undefined;
+  ManageInjuries: undefined;
+  Feedback: undefined;
+  Settings: undefined;
+  News: NewsRouteParams | undefined;
+  Notifications: undefined;
+};
+
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<TabParamList>();
 
 function MobileTopBar() {
   const navigation = useNavigation<any>();
+  const {
+    data: unreadCount = 0,
+    refetch: refetchUnreadCount,
+  } = useUnreadNotificationCountQuery();
+  const refetchUnreadCountRef = useRef(refetchUnreadCount);
+
+  useEffect(() => {
+    refetchUnreadCountRef.current = refetchUnreadCount;
+  }, [refetchUnreadCount]);
+
+  useEffect(() => {
+    const unsubscribeFocus = navigation.addListener('focus', () => {
+      void refetchUnreadCountRef.current();
+    });
+
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        void refetchUnreadCountRef.current();
+      }
+    });
+
+    return () => {
+      unsubscribeFocus();
+      subscription.remove();
+    };
+  }, [navigation]);
 
   const topActions = [
+    { route: 'Notifications', icon: Bell },
     { route: 'News', icon: Newspaper },
     { route: 'Feedback', icon: MessageSquare },
     { route: 'Settings', icon: Settings },
@@ -102,6 +149,13 @@ function MobileTopBar() {
                   onPress={() => navigation.navigate(item.route)}
                 >
                   <Icon size={19} color="#FFFFFF" />
+                  {item.route === 'Notifications' && unreadCount > 0 && (
+                    <View style={styles.notificationBadge}>
+                      <Text style={styles.notificationBadgeText}>
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
               );
             })}
@@ -209,8 +263,27 @@ function MainTabs() {
 }
 
 export default function Navigation() {
+  const handledInitialNotificationRef = useRef(false);
+
+  useEffect(() => {
+    const subscription = addNotificationResponseListener();
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  const handleNavigationReady = () => {
+    if (handledInitialNotificationRef.current) {
+      return;
+    }
+
+    handledInitialNotificationRef.current = true;
+    void handleLastNotificationResponseAsync();
+  };
+
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef} onReady={handleNavigationReady}>
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
@@ -265,6 +338,17 @@ export default function Navigation() {
           options={{
             headerShown: true,
             title: 'News',
+            headerStyle: { backgroundColor: Colors.primary },
+            headerTintColor: '#fff',
+          }}
+        />
+
+        <Stack.Screen
+          name="Notifications"
+          component={NotificationsScreen}
+          options={{
+            headerShown: true,
+            title: 'Notifications',
             headerStyle: { backgroundColor: Colors.primary },
             headerTintColor: '#fff',
           }}
@@ -339,6 +423,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 6,
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -5,
+    minWidth: 17,
+    height: 17,
+    borderRadius: 999,
+    backgroundColor: '#EF4444',
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  notificationBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '900',
   },
 
   tabBarOuter: {

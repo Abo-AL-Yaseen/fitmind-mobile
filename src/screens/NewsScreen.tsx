@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -10,16 +10,21 @@ import {
   Modal,
 } from 'react-native';
 import { Calendar, ArrowRight, Tag, X, User } from 'lucide-react-native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AITipCard } from '../components/AITipCard';
+import type { RootStackParamList } from '../navigation/Navigation';
 import type { PublicNewsItem } from '../services/news';
 import { usePublicNewsQuery } from '../hooks/news/queries/usePublicNewsQuery';
 
 const NEWS_PER_PAGE = 10;
 
-export default function NewsScreen() {
+type NewsScreenProps = NativeStackScreenProps<RootStackParamList, 'News'>;
+
+export default function NewsScreen({ route }: NewsScreenProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedNews, setSelectedNews] = useState<PublicNewsItem | null>(null);
   const [detailsVisible, setDetailsVisible] = useState(false);
+  const handledRouteNewsIdRef = useRef<string | null>(null);
 
   const {
     data: response,
@@ -120,6 +125,31 @@ export default function NewsScreen() {
       setCurrentPage((page) => page + 1);
     }
   }
+
+  useEffect(() => {
+    const requestedNewsId = String(
+      route.params?.newsId ?? route.params?.news_id ?? route.params?.entityId ?? ''
+    ).trim();
+
+    if (
+      !requestedNewsId ||
+      handledRouteNewsIdRef.current === requestedNewsId ||
+      newsItems.length === 0
+    ) {
+      return;
+    }
+
+    const matchedNews = newsItems.find(
+      (item) => String(item.id) === requestedNewsId
+    );
+
+    if (!matchedNews) {
+      return;
+    }
+
+    handledRouteNewsIdRef.current = requestedNewsId;
+    openDetails(matchedNews);
+  }, [newsItems, route.params?.entityId, route.params?.newsId, route.params?.news_id]);
 
   return (
     <>

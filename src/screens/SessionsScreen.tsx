@@ -24,21 +24,22 @@ import { useAvailableSessions } from '../hooks/coachSessions/queries/useAvailabl
 import { useMySessions } from '../hooks/coachSessions/queries/useMySessions';
 import { type CoachSession } from '../services/coachSessions';
 import {
-  formatSessionDateLong,
   formatSessionTimeRange,
   getBookedSessionId,
   getCoachInitials,
+  getDayLabel,
+  formatTimeValue,
   getSessionBookedCount,
   getSessionCapacity,
+  getSessionCalendarKey as getCalendarKeyFromSessionValue,
   getSessionCoachName,
-  getSessionDateKey,
   getSessionIdValue,
+  getSessionStartTime,
   getSessionStatusLabel,
   getSpotsLeft,
   isActiveBooking,
   isSessionCancelled,
   isSessionFull,
-  sortSessionsByDateTime,
 } from '../utils/coachSessionUtils';
 
 type ToastState = {
@@ -53,31 +54,191 @@ type SessionGroup = {
   sessions: CoachSession[];
 };
 
-function toDateKey(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
+type CalendarParts = {
+  year: number;
+  month: number;
+  day: number;
+};
 
-  return `${year}-${month}-${day}`;
+const WEEKDAYS = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+];
+
+const WEEKDAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+const MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+function getMobileSessionCalendarKey(session: CoachSession) {
+  const sessionDateKey = getCalendarKeyFromSessionValue(session.session_date);
+  if (sessionDateKey) return sessionDateKey;
+
+  const dateKey = getCalendarKeyFromSessionValue(
+    (session as { date?: unknown }).date
+  );
+  if (dateKey) return dateKey;
+
+  const scheduledDateKey = getCalendarKeyFromSessionValue(
+    (session as { scheduled_date?: unknown }).scheduled_date
+  );
+  if (scheduledDateKey) return scheduledDateKey;
+
+  if (session.day_of_week != null && session.day_of_week !== '') {
+    return `weekday-${String(session.day_of_week)}`;
+  }
+
+  return 'date-tbd';
 }
 
-function getStartOfWeek(date: Date) {
-  const copy = new Date(date);
-  copy.setHours(0, 0, 0, 0);
-  copy.setDate(copy.getDate() - copy.getDay());
-  return copy;
+function getCalendarParts(key: string): CalendarParts | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
+  if (!match) return null;
+
+  return {
+    year: Number(match[1]),
+    month: Number(match[2]),
+    day: Number(match[3]),
+  };
+}
+
+function getWeekdayIndex(parts: CalendarParts) {
+  let year = parts.year;
+  const offsets = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4];
+
+  if (parts.month < 3) year -= 1;
+
+  return (
+    year +
+    Math.floor(year / 4) -
+    Math.floor(year / 100) +
+    Math.floor(year / 400) +
+    offsets[parts.month - 1] +
+    parts.day
+  ) % 7;
+}
+
+function formatCalendarHeader(key: string, fallbackSession?: CoachSession) {
+  const parts = getCalendarParts(key);
+
+  if (!parts) {
+    return fallbackSession ? getDayLabel(fallbackSession.day_of_week) : 'Date TBD';
+  }
+
+  return `${WEEKDAYS[getWeekdayIndex(parts)]}, ${MONTHS[parts.month - 1]} ${
+    parts.day
+  }`;
+}
+
+function formatCalendarWeekday(key: string) {
+  const parts = getCalendarParts(key);
+  return parts ? WEEKDAYS_SHORT[getWeekdayIndex(parts)] : '';
+}
+
+function getCalendarDay(key: string) {
+  return getCalendarParts(key)?.day ?? 0;
+}
+
+function getTodayCalendarKey() {
+  const today = new Date();
+
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(
+    2,
+    '0'
+  )}-${String(today.getDate()).padStart(2, '0')}`;
+}
+
+function isLeapYear(year: number) {
+  return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+}
+
+function getDaysInMonth(year: number, month: number) {
+  if (month === 2) return isLeapYear(year) ? 29 : 28;
+  return [4, 6, 9, 11].includes(month) ? 30 : 31;
+}
+
+function addDaysToCalendarKey(key: string, days: number) {
+  const parts = getCalendarParts(key);
+  if (!parts) return key;
+
+  let year = parts.year;
+  let month = parts.month;
+  let day = parts.day + days;
+
+  while (day < 1) {
+    month -= 1;
+    if (month < 1) {
+      month = 12;
+      year -= 1;
+    }
+    day += getDaysInMonth(year, month);
+  }
+
+  while (day > getDaysInMonth(year, month)) {
+    day -= getDaysInMonth(year, month);
+    month += 1;
+    if (month > 12) {
+      month = 1;
+      year += 1;
+    }
+  }
+
+  return `${year}-${String(month).padStart(
+    2,
+    '0'
+  )}-${String(day).padStart(2, '0')}`;
+}
+
+function getStartOfWeekCalendarKey(todayKey: string) {
+  const parts = getCalendarParts(todayKey);
+  if (!parts) return todayKey;
+
+  return addDaysToCalendarKey(todayKey, -getWeekdayIndex(parts));
+}
+
+function sortSessionsForMobile(sessions: CoachSession[]) {
+  return [...sessions].sort((a, b) => {
+    const dateCompare = getMobileSessionCalendarKey(a).localeCompare(
+      getMobileSessionCalendarKey(b)
+    );
+    if (dateCompare !== 0) return dateCompare;
+
+    const timeCompare = formatTimeValue(getSessionStartTime(a)).localeCompare(
+      formatTimeValue(getSessionStartTime(b))
+    );
+    if (timeCompare !== 0) return timeCompare;
+
+    return String(a.id ?? '').localeCompare(String(b.id ?? ''));
+  });
 }
 
 function groupSessions(sessions: CoachSession[]) {
   const map = new Map<string, SessionGroup>();
 
-  sortSessionsByDateTime(sessions).forEach((session) => {
-    const key = getSessionDateKey(session);
+  sortSessionsForMobile(sessions).forEach((session) => {
+    const key = getMobileSessionCalendarKey(session);
 
     if (!map.has(key)) {
       map.set(key, {
         key,
-        title: formatSessionDateLong(session),
+        title: formatCalendarHeader(key, session),
         sessions: [],
       });
     }
@@ -111,7 +272,7 @@ export default function SessionsScreen() {
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const availableSessions = useMemo(
-    () => sortSessionsByDateTime(availableQuery.data ?? []),
+    () => sortSessionsForMobile(availableQuery.data ?? []),
     [availableQuery.data]
   );
 
@@ -145,21 +306,20 @@ export default function SessionsScreen() {
   }, [activeBookedSessionIds, availableSessions]);
 
   const weekDays = useMemo(() => {
-    const start = getStartOfWeek(new Date());
+    const todayKey = getTodayCalendarKey();
+    const startKey = getStartOfWeekCalendarKey(todayKey);
 
     return Array.from({ length: 7 }, (_, index) => {
-      const date = new Date(start);
-      date.setDate(start.getDate() + index);
-
-      const key = toDateKey(date);
+      const key = addDaysToCalendarKey(startKey, index);
 
       return {
         key,
-        weekday: date.toLocaleDateString('en-US', { weekday: 'short' }),
-        day: date.getDate(),
-        isToday: key === toDateKey(new Date()),
-        count: availableSessions.filter((session) => getSessionDateKey(session) === key)
-          .length,
+        weekday: formatCalendarWeekday(key),
+        day: getCalendarDay(key),
+        isToday: key === todayKey,
+        count: availableSessions.filter(
+          (session) => getMobileSessionCalendarKey(session) === key
+        ).length,
       };
     });
   }, [availableSessions]);
@@ -168,7 +328,7 @@ export default function SessionsScreen() {
     if (!selectedDateKey) return availableSessions;
 
     return availableSessions.filter(
-      (session) => getSessionDateKey(session) === selectedDateKey
+      (session) => getMobileSessionCalendarKey(session) === selectedDateKey
     );
   }, [availableSessions, selectedDateKey]);
 
