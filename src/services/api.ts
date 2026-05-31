@@ -2,6 +2,18 @@ import * as SecureStore from 'expo-secure-store';
 
 const API_BASE_URL = 'http://127.0.0.1:8000/api';
 
+export class ApiError extends Error {
+  status: number;
+  data: unknown;
+
+  constructor(message: string, status: number, data: unknown) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.data = data;
+  }
+}
+
 export async function apiFetch<T>(
   endpoint: string,
   options: RequestInit = {}
@@ -40,7 +52,7 @@ export async function apiFetch<T>(
       data?.errors?.target_weight?.[0] ||
       'Request failed';
 
-    throw new Error(message);
+    throw new ApiError(message, response.status, data);
   }
 
   return data as T;

@@ -10,16 +10,20 @@ import {
   ScrollView,
   ActivityIndicator,
   Animated,
+  Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useQueryClient } from '@tanstack/react-query';
 import { RootStackParamList } from '../navigation/Navigation';
 import { Colors, Spacing, BorderRadius, FontSizes } from '../constants/theme';
 import { useLoginMutation } from '../hooks/auth/mutations/useLoginMutation';
 import { registerForPushNotificationsAsync } from '../services/notifications';
 import { savePushToken } from '../services/pushTokens';
+import { clearAuth } from '../services/auth';
+import { ApiError } from '../services/api';
 
 type LoginScreenProps = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Login'>;
@@ -32,8 +36,65 @@ type ToastState = {
   message: string;
 };
 
+type SubscriptionRequiredDetails = {
+  title: string;
+  message: string;
+};
+
+type SubscriptionModalState = SubscriptionRequiredDetails & {
+  visible: boolean;
+};
+
+function getErrorData(error: unknown): Record<string, any> {
+  if (
+    error instanceof ApiError &&
+    error.data &&
+    typeof error.data === 'object' &&
+    !Array.isArray(error.data)
+  ) {
+    return error.data as Record<string, any>;
+  }
+
+  return {};
+}
+
+function getString(value: unknown): string {
+  return typeof value === 'string' || typeof value === 'number'
+    ? String(value).trim()
+    : '';
+}
+
+function getSubscriptionRequiredDetails(
+  error: unknown
+): SubscriptionRequiredDetails | null {
+  const data = getErrorData(error);
+  const code = getString(data.code).toLowerCase();
+  const title = getString(data.title) || 'Subscription Required';
+  const message =
+    getString(data.message) ||
+    (error instanceof Error ? error.message : '') ||
+    'Your subscription is not active. Please renew your subscription to continue.';
+  const normalizedMessage = message.toLowerCase();
+
+  const isSubscriptionRequired =
+    code === 'subscription_required' ||
+    data.renew_required === true ||
+    normalizedMessage.includes('subscription') ||
+    normalizedMessage.includes('renew') ||
+    normalizedMessage.includes('expired') ||
+    normalizedMessage.includes('not active');
+
+  if (!isSubscriptionRequired) return null;
+
+  return {
+    title,
+    message,
+  };
+}
+
 export function LoginScreen({ navigation }: LoginScreenProps) {
   const loginMutation = useLoginMutation();
+  const queryClient = useQueryClient();
 
   const [showPassword, setShowPassword] = useState(false);
 
@@ -50,6 +111,13 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
     title: '',
     message: '',
   });
+  const [subscriptionModal, setSubscriptionModal] =
+    useState<SubscriptionModalState>({
+      visible: false,
+      title: 'Subscription Required',
+      message:
+        'Your subscription is not active. Please renew your subscription to continue.',
+    });
 
   const toastTranslateY = useRef(new Animated.Value(120)).current;
   const toastOpacity = useRef(new Animated.Value(0)).current;
@@ -164,6 +232,21 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
         true
       );
     } catch (error: any) {
+      const subscriptionRequired = getSubscriptionRequiredDetails(error);
+
+      if (subscriptionRequired) {
+        await clearAuth();
+        queryClient.clear();
+        setGeneralError('');
+
+        setSubscriptionModal({
+          visible: true,
+          title: subscriptionRequired.title,
+          message: subscriptionRequired.message,
+        });
+        return;
+      }
+
       const message =
         error?.message || 'Login failed. Please check your credentials.';
 
@@ -175,6 +258,16 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
 
   function handleForgotPassword() {
     navigation.navigate('ForgotPassword');
+  }
+
+  async function handleSubscriptionModalClose() {
+    await clearAuth();
+    queryClient.clear();
+
+    setSubscriptionModal((prev) => ({
+      ...prev,
+      visible: false,
+    }));
   }
 
   const toastIsSuccess = toast.type === 'success';
@@ -352,6 +445,46 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
               </View>
             </Animated.View>
           )}
+
+          <Modal
+            visible={subscriptionModal.visible}
+            transparent
+            animationType="fade"
+            statusBarTranslucent
+            onRequestClose={handleSubscriptionModalClose}
+          >
+            <View style={styles.subscriptionModalOverlay}>
+              <View style={styles.subscriptionModalCard}>
+                <View style={styles.subscriptionIconWrap}>
+                  <Ionicons name="card-outline" size={28} color={Colors.primary} />
+                </View>
+
+                <Text style={styles.subscriptionModalTitle}>
+                  {subscriptionModal.title}
+                </Text>
+                <Text style={styles.subscriptionModalMessage}>
+                  {subscriptionModal.message}
+                </Text>
+
+                <TouchableOpacity
+                  style={styles.subscriptionModalButton}
+                  activeOpacity={0.86}
+                  onPress={handleSubscriptionModalClose}
+                >
+                  <LinearGradient
+                    colors={[Colors.primary, Colors.primaryLight]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.subscriptionModalButtonGradient}
+                  >
+                    <Text style={styles.subscriptionModalButtonText}>
+                      Back to Login
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
         </SafeAreaView>
       </LinearGradient>
     </KeyboardAvoidingView>
@@ -573,5 +706,64 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.92)',
     fontSize: 13,
     lineHeight: 18,
+  },
+  subscriptionModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(3, 7, 18, 0.58)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  subscriptionModalCard: {
+    width: '100%',
+    maxWidth: 360,
+    borderRadius: 26,
+    backgroundColor: '#FFFFFF',
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.24,
+    shadowRadius: 24,
+    elevation: 16,
+  },
+  subscriptionIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 22,
+    backgroundColor: '#E6F4F1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  subscriptionModalTitle: {
+    color: Colors.textPrimary,
+    fontSize: 21,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  subscriptionModalMessage: {
+    marginTop: 10,
+    color: Colors.textLight,
+    fontSize: 14,
+    lineHeight: 21,
+    textAlign: 'center',
+  },
+  subscriptionModalButton: {
+    alignSelf: 'stretch',
+    marginTop: 22,
+    borderRadius: BorderRadius.md,
+    overflow: 'hidden',
+  },
+  subscriptionModalButtonGradient: {
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  subscriptionModalButtonText: {
+    color: '#FFFFFF',
+    fontSize: FontSizes.md,
+    fontWeight: '700',
   },
 });

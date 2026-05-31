@@ -1,5 +1,6 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
+  Alert,
   View,
   Text,
   StyleSheet,
@@ -21,13 +22,54 @@ import {
   User,
   CalendarDays,
   ClipboardList,
+  UserCircle,
 } from 'lucide-react-native';
+import { CommonActions } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import { quickLinks } from '../data/dashboardData';
 import { StatCard } from '../components/StatCard';
 import { ProgressBar } from '../components/ProgressBar';
 import { useDashboardSummaryQuery } from '../hooks/dashboard/queries/useDashboardSummaryQuery';
+import { clearAuth } from '../services/auth';
+import { ApiError } from '../services/api';
+
+function getErrorStatus(error: unknown) {
+  return error instanceof ApiError ? error.status : undefined;
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : '';
+}
+
+function isProfileMissingError(error: unknown) {
+  const status = getErrorStatus(error);
+  const message = getErrorMessage(error).toLowerCase();
+
+  return (
+    status === 404 ||
+    message.includes('profile not found') ||
+    (message.includes('profile') && message.includes('not found'))
+  );
+}
+
+function isSubscriptionInactiveError(error: unknown) {
+  const status = getErrorStatus(error);
+  const message = getErrorMessage(error).toLowerCase();
+
+  return (
+    status === 401 ||
+    status === 403 ||
+    message.includes('subscription') ||
+    message.includes('inactive') ||
+    message.includes('expired') ||
+    message.includes('not active') ||
+    message.includes('renew')
+  );
+}
 
 export default function DashboardScreen({ navigation }: any) {
+  const queryClient = useQueryClient();
+  const subscriptionAlertShownRef = useRef(false);
   const {
     data: summary,
     isLoading,
@@ -39,6 +81,50 @@ export default function DashboardScreen({ navigation }: any) {
   const handleRefresh = useCallback(() => {
     refetch();
   }, [refetch]);
+
+  const navigateToLogin = useCallback(async () => {
+    await clearAuth();
+    queryClient.clear();
+
+    const rootNavigation = navigation.getParent?.() ?? navigation;
+
+    rootNavigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: 'Login' }],
+      })
+    );
+  }, [navigation, queryClient]);
+
+  const handleCompleteProfile = useCallback(() => {
+    const rootNavigation = navigation.getParent?.() ?? navigation;
+    rootNavigation.navigate('Profile');
+  }, [navigation]);
+
+  const hasSubscriptionError = !!error && isSubscriptionInactiveError(error);
+  const hasMissingProfileError = !!error && isProfileMissingError(error);
+
+  useEffect(() => {
+    if (!hasSubscriptionError || subscriptionAlertShownRef.current) {
+      return;
+    }
+
+    subscriptionAlertShownRef.current = true;
+
+    Alert.alert(
+      'Subscription Required',
+      'Your subscription is not active. Please renew your subscription to continue.',
+      [
+        {
+          text: 'OK',
+          onPress: () => {
+            void navigateToLogin();
+          },
+        },
+      ],
+      { cancelable: false }
+    );
+  }, [hasSubscriptionError, navigateToLogin]);
 
   const today = useMemo(
     () =>
@@ -86,6 +172,34 @@ export default function DashboardScreen({ navigation }: any) {
       <View style={styles.centerState}>
         <ActivityIndicator size="large" color="#0D7D6D" />
         <Text style={styles.centerStateText}>Loading dashboard...</Text>
+      </View>
+    );
+  }
+
+  if (hasSubscriptionError && !summary) {
+    return (
+      <View style={styles.centerState}>
+        <Text style={styles.errorTitle}>Subscription Required</Text>
+        <Text style={styles.errorText}>
+          Your subscription is not active. Please renew your subscription to continue.
+        </Text>
+      </View>
+    );
+  }
+
+  if (hasMissingProfileError && !summary) {
+    return (
+      <View style={styles.centerState}>
+        <View style={styles.onboardingIcon}>
+          <UserCircle color="#0D7D6D" size={34} />
+        </View>
+        <Text style={styles.errorTitle}>Complete your profile first</Text>
+        <Text style={styles.errorText}>
+          Please fill in your profile information so we can prepare your dashboard.
+        </Text>
+        <TouchableOpacity style={styles.retryButton} onPress={handleCompleteProfile}>
+          <Text style={styles.retryButtonText}>Complete Profile</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -274,6 +388,15 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 15,
     color: '#6B7280',
+  },
+  onboardingIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    backgroundColor: '#E6F4F1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
   },
   errorTitle: {
     fontSize: 18,
