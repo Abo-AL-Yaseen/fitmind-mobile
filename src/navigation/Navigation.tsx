@@ -47,6 +47,7 @@ import SettingsScreen from '../screens/SettingsScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import ManageInjuriesScreen from '../screens/ManageInjuriesScreen';
 import { ChangePasswordScreen } from '../screens/ChangePasswordScreen';
+import AssistantScreen from '../screens/AssistantScreen';
 import { Colors } from '../constants/theme';
 import {
   navigationRef,
@@ -85,6 +86,7 @@ export type RootStackParamList = {
   Settings: undefined;
   News: NewsRouteParams | undefined;
   Notifications: undefined;
+  Assistant: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -293,6 +295,7 @@ export default function Navigation() {
         <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
         <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
         <Stack.Screen name="MainTabs" component={MainTabs} />
+        <Stack.Screen name="Assistant" component={AssistantScreen} />
 
         <Stack.Screen
           name="Profile"

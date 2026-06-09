@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   Dumbbell,
   Apple,
@@ -23,6 +24,8 @@ import {
   CalendarDays,
   ClipboardList,
   UserCircle,
+  Bot,
+  Sparkles,
 } from 'lucide-react-native';
 import { CommonActions } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
@@ -284,6 +287,53 @@ export default function DashboardScreen({ navigation }: any) {
           </View>
         </View>
 
+        <TouchableOpacity
+          style={styles.assistantCardTouchable}
+          activeOpacity={0.86}
+          onPress={() => navigation.navigate('Assistant')}
+        >
+          <LinearGradient
+            colors={['#063D36', '#0D7D6D', '#115E59']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.assistantCard}
+          >
+            <View style={styles.assistantGlassPanelTop} />
+            <View style={styles.assistantGlassPanelBottom} />
+
+            <View style={styles.assistantHeaderRow}>
+              <View style={styles.assistantBadge}>
+                <Sparkles color="#BFF6EC" size={12} />
+                <Text style={styles.assistantBadgeText}>AI COACH</Text>
+              </View>
+
+              <View style={styles.assistantIcon}>
+                <Bot color="#FFFFFF" size={23} />
+              </View>
+            </View>
+
+            <Text style={styles.assistantTitle}>FitMind Assistant</Text>
+            <Text style={styles.assistantSubtitle}>
+              Ask before your next workout, meal, or recovery move.
+            </Text>
+
+            <View style={styles.assistantFooterRow}>
+              <View style={styles.assistantChipRow}>
+                {['Workout', 'Food', 'Pain'].map((chip) => (
+                  <View key={chip} style={styles.assistantChip}>
+                    <Text style={styles.assistantChipText}>{chip}</Text>
+                  </View>
+                ))}
+              </View>
+
+              <View style={styles.assistantCtaPill}>
+                <Text style={styles.assistantCtaText}>Ask AI</Text>
+                <ChevronRight color="#063D36" size={14} strokeWidth={2.8} />
+              </View>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+
         <View style={styles.statsGrid}>
           {quickStats.map((stat, index) => (
             <StatCard
@@ -500,6 +550,129 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  assistantCardTouchable: {
+    borderRadius: 26,
+    shadowColor: '#0D7D6D',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.24,
+    shadowRadius: 22,
+    elevation: 7,
+  },
+  assistantCard: {
+    minHeight: 174,
+    borderRadius: 26,
+    padding: 18,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+  },
+  assistantGlassPanelTop: {
+    position: 'absolute',
+    top: -34,
+    right: -28,
+    width: 190,
+    height: 104,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    transform: [{ rotate: '13deg' }],
+  },
+  assistantGlassPanelBottom: {
+    position: 'absolute',
+    left: 64,
+    bottom: -42,
+    width: 230,
+    height: 94,
+    borderRadius: 28,
+    backgroundColor: 'rgba(127,212,201,0.14)',
+    transform: [{ rotate: '-7deg' }],
+  },
+  assistantHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  assistantBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  assistantBadgeText: {
+    color: '#D8FFF7',
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  assistantIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  assistantTitle: {
+    color: '#FFFFFF',
+    fontSize: 23,
+    fontWeight: '900',
+    lineHeight: 29,
+  },
+  assistantSubtitle: {
+    color: 'rgba(255,255,255,0.76)',
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 19,
+    marginTop: 5,
+    maxWidth: '82%',
+  },
+  assistantFooterRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginTop: 18,
+  },
+  assistantChipRow: {
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 7,
+  },
+  assistantChip: {
+    backgroundColor: 'rgba(255,255,255,0.13)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.16)',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  assistantChipText: {
+    color: 'rgba(255,255,255,0.88)',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  assistantCtaPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#D8FFF7',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  assistantCtaText: {
+    color: '#063D36',
+    fontSize: 12,
+    fontWeight: '900',
   },
   statsGrid: {
     flexDirection: 'row',
