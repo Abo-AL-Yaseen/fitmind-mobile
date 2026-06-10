@@ -18,6 +18,7 @@ import {
   LogOut,
   ChevronRight,
   Edit2,
+  Globe2,
 } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 
@@ -27,6 +28,7 @@ import { useCurrentUserGoalQuery } from '../hooks/userGoals/queries/useCurrentUs
 import { useUpsertCurrentUserGoalMutation } from '../hooks/userGoals/mutations/useUpsertCurrentUserGoalMutation';
 import { useStoredAuthQuery } from '../hooks/auth/queries/useStoredAuthQuery';
 import { useLogoutMutation } from '../hooks/auth/mutations/useLogoutMutation';
+import { useTranslation, type Language } from '../i18n';
 
 type ToastState = {
   visible: boolean;
@@ -43,6 +45,7 @@ const GOAL_OPTIONS = [
 
 export default function SettingsScreen() {
   const navigation = useNavigation<any>();
+  const { language, setLanguage, t, isRtl } = useTranslation();
 
   const authQuery = useStoredAuthQuery();
   const profileQuery = useMyProfileQuery();
@@ -108,15 +111,15 @@ export default function SettingsScreen() {
 
   useEffect(() => {
     if (profileQuery.isError) {
-      showToast('Failed to load profile.', 'error');
+      showToast(t('settings.failedProfile'), 'error');
     }
-  }, [profileQuery.isError, showToast]);
+  }, [profileQuery.isError, showToast, t]);
 
   useEffect(() => {
     if (currentGoalQuery.isError) {
-      showToast('Failed to load fitness goal.', 'error');
+      showToast(t('settings.failedGoal'), 'error');
     }
-  }, [currentGoalQuery.isError, showToast]);
+  }, [currentGoalQuery.isError, showToast, t]);
 
   useEffect(() => {
     if (!profileData || profileFormInitialized) return;
@@ -163,11 +166,18 @@ export default function SettingsScreen() {
     setGoalType(GOAL_OPTIONS[nextIndex].value);
   };
 
+  const getGoalLabel = (value: string) => t(`settings.goal.${value}`);
+
+  const handleLanguageSelect = async (nextLanguage: Language) => {
+    await setLanguage(nextLanguage);
+    showToast(t('language.updated'));
+  };
+
   const handleSaveGoal = async () => {
     const parsedWeight = Number(targetWeight);
 
     if (!targetWeight.trim() || Number.isNaN(parsedWeight)) {
-      showToast('Please enter a valid target weight.', 'error');
+      showToast(t('settings.validTargetWeight'), 'error');
       return;
     }
 
@@ -181,9 +191,9 @@ export default function SettingsScreen() {
       setTargetWeight(String(savedGoal.target_weight ?? parsedWeight));
       setGoalFormInitialized(true);
 
-      showToast('Fitness goal updated successfully.');
+      showToast(t('settings.goalUpdated'));
     } catch (error: any) {
-      showToast(error?.message || 'Failed to update fitness goal.', 'error');
+      showToast(error?.message || t('settings.goalUpdateFailed'), 'error');
     }
   };
 
@@ -214,9 +224,9 @@ export default function SettingsScreen() {
 
       setProfileFormInitialized(true);
       setEditMode(false);
-      showToast('Profile updated successfully.');
+      showToast(t('settings.profileUpdated'));
     } catch (error: any) {
-      showToast(error?.message || 'Failed to update profile.', 'error');
+      showToast(error?.message || t('settings.profileUpdateFailed'), 'error');
     }
   };
 
@@ -224,7 +234,7 @@ export default function SettingsScreen() {
     try {
       await logoutMutation.mutateAsync();
 
-      showToast('Signed out successfully.');
+      showToast(t('settings.signedOut'));
 
       setTimeout(() => {
         navigation.reset({
@@ -233,7 +243,7 @@ export default function SettingsScreen() {
         });
       }, 700);
     } catch (error: any) {
-      showToast(error?.message || 'Logout failed.', 'error');
+      showToast(error?.message || t('settings.logoutFailed'), 'error');
     }
   };
 
@@ -253,54 +263,70 @@ export default function SettingsScreen() {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
-          <View style={styles.header}>
+          <View style={[styles.header, isRtl && styles.rowReverse]}>
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>{initials}</Text>
             </View>
 
             <View style={styles.headerInfo}>
-              <Text style={styles.headerName}>{userName || 'FitMind User'}</Text>
-              <Text style={styles.headerEmail}>{userEmail || 'No email found'}</Text>
+              <Text style={[styles.headerName, isRtl && styles.textRight]}>
+                {userName || t('common.fitmindUser')}
+              </Text>
+              <Text style={[styles.headerEmail, isRtl && styles.textRight]}>
+                {userEmail || t('common.noEmail')}
+              </Text>
 
               <View style={styles.premiumBadge}>
-                <Text style={styles.premiumBadgeText}>⭐ Premium Member</Text>
+                <Text style={styles.premiumBadgeText}>
+                  {t('settings.premiumMember')}
+                </Text>
               </View>
             </View>
           </View>
 
           <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <View style={styles.cardLeft}>
+            <View style={[styles.cardHeader, isRtl && styles.rowReverse]}>
+              <View style={[styles.cardLeft, isRtl && styles.rowReverse]}>
                 <View style={styles.iconContainer}>
                   <User color="#0D7D6D" size={18} />
                 </View>
-                <Text style={styles.cardTitle}>Personal Information</Text>
+                <Text style={[styles.cardTitle, isRtl && styles.textRight]}>
+                  {t('settings.personalInfo')}
+                </Text>
               </View>
 
               <TouchableOpacity
-                style={[styles.editButton, editMode && styles.editButtonActive]}
+                style={[
+                  styles.editButton,
+                  isRtl && styles.rowReverse,
+                  editMode && styles.editButtonActive,
+                ]}
                 onPress={() => setEditMode(!editMode)}
                 activeOpacity={0.7}
               >
                 <Edit2 color={editMode ? '#6B7280' : '#0D7D6D'} size={12} />
                 <Text style={[styles.editButtonText, editMode && styles.editButtonTextActive]}>
-                  {editMode ? 'Cancel' : 'Edit'}
+                  {editMode ? t('common.cancel') : t('common.edit')}
                 </Text>
               </TouchableOpacity>
             </View>
 
             <View style={styles.inputsGrid}>
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Full Name</Text>
+                <Text style={[styles.inputLabel, isRtl && styles.textRight]}>
+                  {t('common.fullName')}
+                </Text>
                 <TextInput
                   value={userName}
                   editable={false}
-                  style={[styles.input, styles.inputDisabled]}
+                  style={[styles.input, styles.inputDisabled, isRtl && styles.textRight]}
                 />
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Email</Text>
+                <Text style={[styles.inputLabel, isRtl && styles.textRight]}>
+                  {t('common.email')}
+                </Text>
                 <TextInput
                   value={userEmail}
                   editable={false}
@@ -311,7 +337,9 @@ export default function SettingsScreen() {
 
               <View style={styles.halfInputGroup}>
                 <View style={[styles.inputGroup, styles.flexOne]}>
-                  <Text style={styles.inputLabel}>Height</Text>
+                  <Text style={[styles.inputLabel, isRtl && styles.textRight]}>
+                    {t('settings.height')}
+                  </Text>
                   <TextInput
                     value={profileFields.height}
                     editable={editMode}
@@ -319,14 +347,20 @@ export default function SettingsScreen() {
                       setProfileFields((prev) => ({ ...prev, height: value }))
                     }
                     keyboardType="numeric"
-                    placeholder="Enter height"
+                    placeholder={t('settings.enterHeight')}
                     placeholderTextColor="#9CA3AF"
-                    style={[styles.input, !editMode && styles.inputDisabled]}
+                    style={[
+                      styles.input,
+                      isRtl && styles.textRight,
+                      !editMode && styles.inputDisabled,
+                    ]}
                   />
                 </View>
 
                 <View style={[styles.inputGroup, styles.flexOne]}>
-                  <Text style={styles.inputLabel}>Weight</Text>
+                  <Text style={[styles.inputLabel, isRtl && styles.textRight]}>
+                    {t('settings.weight')}
+                  </Text>
                   <TextInput
                     value={profileFields.weight}
                     editable={editMode}
@@ -334,15 +368,21 @@ export default function SettingsScreen() {
                       setProfileFields((prev) => ({ ...prev, weight: value }))
                     }
                     keyboardType="numeric"
-                    placeholder="Enter weight"
+                    placeholder={t('settings.enterWeight')}
                     placeholderTextColor="#9CA3AF"
-                    style={[styles.input, !editMode && styles.inputDisabled]}
+                    style={[
+                      styles.input,
+                      isRtl && styles.textRight,
+                      !editMode && styles.inputDisabled,
+                    ]}
                   />
                 </View>
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Age</Text>
+                <Text style={[styles.inputLabel, isRtl && styles.textRight]}>
+                  {t('settings.age')}
+                </Text>
                 <TextInput
                   value={profileFields.age}
                   editable={editMode}
@@ -350,9 +390,13 @@ export default function SettingsScreen() {
                     setProfileFields((prev) => ({ ...prev, age: value }))
                   }
                   keyboardType="numeric"
-                  placeholder="Enter age"
+                  placeholder={t('settings.enterAge')}
                   placeholderTextColor="#9CA3AF"
-                  style={[styles.input, !editMode && styles.inputDisabled]}
+                  style={[
+                    styles.input,
+                    isRtl && styles.textRight,
+                    !editMode && styles.inputDisabled,
+                  ]}
                 />
               </View>
             </View>
@@ -365,39 +409,94 @@ export default function SettingsScreen() {
                 disabled={savingProfile}
               >
                 <Text style={styles.saveButtonText}>
-                  {savingProfile ? 'Saving...' : 'Save Profile'}
+                  {savingProfile ? t('common.saving') : t('settings.saveProfile')}
                 </Text>
               </TouchableOpacity>
             )}
           </View>
 
           <View style={styles.card}>
-            <View style={styles.cardHeaderSimple}>
+            <View style={[styles.cardHeaderSimple, isRtl && styles.rowReverse]}>
+              <View style={[styles.iconContainer, { backgroundColor: '#E0F2FE' }]}>
+                <Globe2 color="#0284C7" size={18} />
+              </View>
+              <View style={styles.cardTitleWrap}>
+                <Text style={[styles.cardTitle, isRtl && styles.textRight]}>
+                  {t('language.title')}
+                </Text>
+                <Text style={[styles.cardSubtitle, isRtl && styles.textRight]}>
+                  {t('language.subtitle')}
+                </Text>
+              </View>
+            </View>
+
+            <View style={[styles.languageRow, isRtl && styles.rowReverse]}>
+              {(['en', 'ar'] as Language[]).map((option) => {
+                const active = language === option;
+
+                return (
+                  <TouchableOpacity
+                    key={option}
+                    style={[
+                      styles.languageButton,
+                      active && styles.languageButtonActive,
+                    ]}
+                    activeOpacity={0.8}
+                    onPress={() => handleLanguageSelect(option)}
+                  >
+                    <Text
+                      style={[
+                        styles.languageButtonText,
+                        active && styles.languageButtonTextActive,
+                      ]}
+                    >
+                      {option === 'en'
+                        ? t('language.english')
+                        : t('language.arabic')}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          <View style={styles.card}>
+            <View style={[styles.cardHeaderSimple, isRtl && styles.rowReverse]}>
               <View style={[styles.iconContainer, { backgroundColor: '#FEF3C7' }]}>
                 <Target color="#F59E0B" size={18} />
               </View>
-              <Text style={styles.cardTitle}>Fitness Goals</Text>
+              <Text style={[styles.cardTitle, isRtl && styles.textRight]}>
+                {t('settings.fitnessGoals')}
+              </Text>
             </View>
 
             <View style={styles.inputsGrid}>
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Primary Goal</Text>
-                <TouchableOpacity style={styles.selectInput} activeOpacity={0.7} onPress={cycleGoalType}>
+                <Text style={[styles.inputLabel, isRtl && styles.textRight]}>
+                  {t('settings.primaryGoal')}
+                </Text>
+                <TouchableOpacity
+                  style={[styles.selectInput, isRtl && styles.rowReverse]}
+                  activeOpacity={0.7}
+                  onPress={cycleGoalType}
+                >
                   <Text style={styles.selectText}>
-                    {GOAL_OPTIONS[goalTypeIndex]?.label ?? 'Weight Loss'}
+                    {getGoalLabel(GOAL_OPTIONS[goalTypeIndex]?.value ?? 'weight_loss')}
                   </Text>
                   <ChevronRight color="#9CA3AF" size={16} />
                 </TouchableOpacity>
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Target Weight</Text>
+                <Text style={[styles.inputLabel, isRtl && styles.textRight]}>
+                  {t('settings.targetWeight')}
+                </Text>
                 <TextInput
                   value={targetWeight}
                   onChangeText={setTargetWeight}
                   keyboardType="numeric"
-                  style={styles.input}
-                  placeholder="Enter target weight"
+                  style={[styles.input, isRtl && styles.textRight]}
+                  placeholder={t('settings.enterTargetWeight')}
                   placeholderTextColor="#9CA3AF"
                 />
               </View>
@@ -411,51 +510,57 @@ export default function SettingsScreen() {
             >
               <Text style={styles.saveButtonText}>
                 {savingGoal
-                  ? 'Saving...'
+                  ? t('common.saving')
                   : currentGoalRecord?.id
-                  ? 'Update Goal'
-                  : 'Create Goal'}
+                  ? t('settings.updateGoal')
+                  : t('settings.createGoal')}
               </Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.card}>
-            <View style={styles.cardHeaderSimple}>
+            <View style={[styles.cardHeaderSimple, isRtl && styles.rowReverse]}>
               <View style={[styles.iconContainer, { backgroundColor: '#F3E8FF' }]}>
                 <Bell color="#A855F7" size={18} />
               </View>
-              <Text style={styles.cardTitle}>Notifications</Text>
+              <Text style={[styles.cardTitle, isRtl && styles.textRight]}>
+                {t('settings.notifications')}
+              </Text>
             </View>
 
             <View style={styles.notificationsList}>
               {[
                 {
                   key: 'workoutReminders' as const,
-                  title: 'Workout Reminders',
-                  desc: 'Get notified about scheduled workouts',
+                  title: t('settings.workoutReminders'),
+                  desc: t('settings.workoutRemindersDesc'),
                 },
                 {
                   key: 'mealReminders' as const,
-                  title: 'Meal Reminders',
-                  desc: 'Reminders for meal times',
+                  title: t('settings.mealReminders'),
+                  desc: t('settings.mealRemindersDesc'),
                 },
                 {
                   key: 'progressUpdates' as const,
-                  title: 'Progress Updates',
-                  desc: 'Weekly progress summaries',
+                  title: t('settings.progressUpdates'),
+                  desc: t('settings.progressUpdatesDesc'),
                 },
                 {
                   key: 'newsOffers' as const,
-                  title: 'News & Offers',
-                  desc: 'Special deals and announcements',
+                  title: t('settings.newsOffers'),
+                  desc: t('settings.newsOffersDesc'),
                 },
               ].map((item, i) => (
                 <View key={item.key}>
                   {i > 0 && <View style={styles.separator} />}
-                  <View style={styles.notificationItem}>
+                  <View style={[styles.notificationItem, isRtl && styles.rowReverse]}>
                     <View style={styles.notificationContent}>
-                      <Text style={styles.notificationTitle}>{item.title}</Text>
-                      <Text style={styles.notificationDesc}>{item.desc}</Text>
+                      <Text style={[styles.notificationTitle, isRtl && styles.textRight]}>
+                        {item.title}
+                      </Text>
+                      <Text style={[styles.notificationDesc, isRtl && styles.textRight]}>
+                        {item.desc}
+                      </Text>
                     </View>
 
                     <Switch
@@ -476,23 +581,35 @@ export default function SettingsScreen() {
           </View>
 
           <View style={styles.card}>
-            <View style={styles.cardHeaderSimple}>
+            <View style={[styles.cardHeaderSimple, isRtl && styles.rowReverse]}>
               <View style={[styles.iconContainer, { backgroundColor: '#FEE2E2' }]}>
                 <Lock color="#EF4444" size={18} />
               </View>
-              <Text style={styles.cardTitle}>Account Security</Text>
+              <Text style={[styles.cardTitle, isRtl && styles.textRight]}>
+                {t('settings.accountSecurity')}
+              </Text>
             </View>
 
             <View style={styles.securityList}>
-              <TouchableOpacity style={styles.securityItem} activeOpacity={0.7} onPress={goToChangePassword}>
-                <Text style={styles.securityItemText}>Change Password</Text>
+              <TouchableOpacity
+                style={[styles.securityItem, isRtl && styles.rowReverse]}
+                activeOpacity={0.7}
+                onPress={goToChangePassword}
+              >
+                <Text style={styles.securityItemText}>
+                  {t('settings.changePassword')}
+                </Text>
                 <ChevronRight color="#D1D5DB" size={16} />
               </TouchableOpacity>
             </View>
           </View>
 
           <TouchableOpacity
-            style={[styles.logoutButton, loggingOut && styles.logoutButtonDisabled]}
+            style={[
+              styles.logoutButton,
+              isRtl && styles.rowReverse,
+              loggingOut && styles.logoutButtonDisabled,
+            ]}
             activeOpacity={0.7}
             onPress={handleSignOut}
             disabled={loggingOut}
@@ -503,7 +620,7 @@ export default function SettingsScreen() {
               <LogOut color="#EF4444" size={18} />
             )}
             <Text style={styles.logoutButtonText}>
-              {loggingOut ? 'Signing Out...' : 'Sign Out'}
+              {loggingOut ? t('settings.signingOut') : t('settings.signOut')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -639,6 +756,44 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#111827',
+  },
+  cardTitleWrap: {
+    flex: 1,
+  },
+  cardSubtitle: {
+    marginTop: 2,
+    color: '#6B7280',
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  languageRow: {
+    marginTop: 16,
+    flexDirection: 'row',
+    gap: 10,
+  },
+  languageButton: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  languageButtonActive: {
+    backgroundColor: '#E6F4F1',
+    borderColor: '#0D7D6D',
+  },
+  languageButtonText: {
+    color: '#374151',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  languageButtonTextActive: {
+    color: '#0D7D6D',
+    fontWeight: '900',
   },
   editButton: {
     flexDirection: 'row',
@@ -809,5 +964,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  rowReverse: {
+    flexDirection: 'row-reverse',
+  },
+  textRight: {
+    textAlign: 'right',
   },
 });

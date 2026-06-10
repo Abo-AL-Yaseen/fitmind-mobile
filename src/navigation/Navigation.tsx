@@ -24,7 +24,6 @@ import {
   Dumbbell,
   Home,
   Apple,
-  TrendingUp,
   Settings,
   Newspaper,
   MessageSquare,
@@ -38,7 +37,6 @@ import DashboardScreen from '../screens/DashboardScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import WorkoutScreen from '../screens/WorkoutScreen';
 import NutritionScreen from '../screens/NutritionScreen';
-import ProgressScreen from '../screens/ProgressScreen';
 import SessionsScreen from '../screens/SessionsScreen';
 import MyScheduleScreen from '../screens/MyScheduleScreen';
 import NewsScreen from '../screens/NewsScreen';
@@ -57,6 +55,7 @@ import {
   handleLastNotificationResponseAsync,
 } from '../services/notifications';
 import { useUnreadNotificationCountQuery } from '../hooks/userNotifications';
+import { useTranslation } from '../i18n';
 
 export type TabParamList = {
   Dashboard: undefined;
@@ -64,7 +63,6 @@ export type TabParamList = {
   Schedule: undefined;
   Workout: undefined;
   Nutrition: undefined;
-  Progress: undefined;
 };
 
 export type NewsRouteParams = {
@@ -94,6 +92,7 @@ const Tab = createBottomTabNavigator<TabParamList>();
 
 function MobileTopBar() {
   const navigation = useNavigation<any>();
+  const { isRtl } = useTranslation();
   const {
     data: unreadCount = 0,
     refetch: refetchUnreadCount,
@@ -131,15 +130,15 @@ function MobileTopBar() {
   return (
     <SafeAreaView edges={['top']} style={styles.safeAreaTop}>
       <View style={styles.topBarWrapper}>
-        <View style={styles.topBar}>
-          <View style={styles.brandRow}>
+        <View style={[styles.topBar, isRtl && styles.rowReverse]}>
+          <View style={[styles.brandRow, isRtl && styles.rowReverse]}>
             <View style={styles.brandIconBox}>
               <Dumbbell size={18} color="#FFFFFF" />
             </View>
             <Text style={styles.brandText}>FitMind</Text>
           </View>
 
-          <View style={styles.topActionsRow}>
+          <View style={[styles.topActionsRow, isRtl && styles.rowReverse]}>
             {topActions.map((item) => {
               const Icon = item.icon;
 
@@ -169,22 +168,21 @@ function MobileTopBar() {
 }
 
 function CustomTabBar({ state, navigation }: BottomTabBarProps) {
+  const { t } = useTranslation();
   const iconMap = {
     Dashboard: Home,
     Sessions: CalendarDays,
     Schedule: ClipboardList,
     Workout: Dumbbell,
     Nutrition: Apple,
-    Progress: TrendingUp,
   } as const;
 
   const labelMap = {
-    Dashboard: 'Home',
-    Sessions: 'Sessions',
-    Schedule: 'Schedule',
-    Workout: 'Workout',
-    Nutrition: 'Nutrition',
-    Progress: 'Progress',
+    Dashboard: t('nav.home'),
+    Sessions: t('nav.sessions'),
+    Schedule: t('nav.schedule'),
+    Workout: t('nav.workout'),
+    Nutrition: t('nav.nutrition'),
   } as const;
 
   return (
@@ -259,12 +257,12 @@ function MainTabs() {
       <Tab.Screen name="Schedule" component={MyScheduleScreen} />
       <Tab.Screen name="Workout" component={WorkoutScreen} />
       <Tab.Screen name="Nutrition" component={NutritionScreen} />
-      <Tab.Screen name="Progress" component={ProgressScreen} />
     </Tab.Navigator>
   );
 }
 
 export default function Navigation() {
+  const { t } = useTranslation();
   const handledInitialNotificationRef = useRef(false);
 
   useEffect(() => {
@@ -318,7 +316,7 @@ export default function Navigation() {
           component={FeedbackScreen}
           options={{
             headerShown: true,
-            title: 'Feedback',
+            title: t('nav.feedback'),
             headerStyle: { backgroundColor: Colors.primary },
             headerTintColor: '#fff',
           }}
@@ -329,7 +327,7 @@ export default function Navigation() {
           component={SettingsScreen}
           options={{
             headerShown: true,
-            title: 'Settings',
+            title: t('nav.settings'),
             headerStyle: { backgroundColor: Colors.primary },
             headerTintColor: '#fff',
           }}
@@ -340,7 +338,7 @@ export default function Navigation() {
           component={NewsScreen}
           options={{
             headerShown: true,
-            title: 'News',
+            title: t('nav.news'),
             headerStyle: { backgroundColor: Colors.primary },
             headerTintColor: '#fff',
           }}
@@ -351,7 +349,7 @@ export default function Navigation() {
           component={NotificationsScreen}
           options={{
             headerShown: true,
-            title: 'Notifications',
+            title: t('nav.notifications'),
             headerStyle: { backgroundColor: Colors.primary },
             headerTintColor: '#fff',
           }}
@@ -362,7 +360,7 @@ export default function Navigation() {
           component={ChangePasswordScreen}
           options={{
             headerShown: true,
-            title: 'Change Password',
+            title: t('nav.changePassword'),
             headerStyle: { backgroundColor: Colors.primary },
             headerTintColor: '#fff',
           }}
@@ -397,6 +395,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  rowReverse: {
+    flexDirection: 'row-reverse',
   },
   brandRow: {
     flexDirection: 'row',

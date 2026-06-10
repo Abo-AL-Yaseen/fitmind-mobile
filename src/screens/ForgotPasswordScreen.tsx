@@ -16,10 +16,12 @@ import type { RootStackParamList } from '../navigation/Navigation';
 import { Colors } from '../constants/theme';
 import { useForgotPasswordMutation } from '../hooks/auth/mutations/useForgotPasswordMutation';
 import { useVerifyOtpMutation } from '../hooks/auth/mutations/useVerifyOtpMutation';
+import { useTranslation } from '../i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ForgotPassword'>;
 
 export function ForgotPasswordScreen({ navigation }: Props) {
+  const { t, isRtl } = useTranslation();
   const forgotPasswordMutation = useForgotPasswordMutation();
   const verifyOtpMutation = useVerifyOtpMutation();
 
@@ -35,7 +37,7 @@ export function ForgotPasswordScreen({ navigation }: Props) {
     const cleanEmail = email.trim();
 
     if (!cleanEmail) {
-      setError('Please enter your email address.');
+      setError(t('forgot.emailRequired'));
       return;
     }
 
@@ -45,7 +47,7 @@ export function ForgotPasswordScreen({ navigation }: Props) {
       await forgotPasswordMutation.mutateAsync(cleanEmail);
       setStep('otp');
     } catch (err: any) {
-      setError(err?.message || 'Failed to send OTP. Please try again.');
+      setError(err?.message || t('forgot.sendFailed'));
     }
   };
 
@@ -54,7 +56,7 @@ export function ForgotPasswordScreen({ navigation }: Props) {
     const cleanOtp = otp.trim();
 
     if (!cleanOtp) {
-      setError('Please enter the OTP code.');
+      setError(t('forgot.otpRequired'));
       return;
     }
 
@@ -68,7 +70,7 @@ export function ForgotPasswordScreen({ navigation }: Props) {
 
       navigation.navigate('ResetPassword');
     } catch (err: any) {
-      setError(err?.message || 'OTP verification failed. Please try again.');
+      setError(err?.message || t('forgot.verifyFailed'));
     }
   };
 
@@ -94,22 +96,25 @@ export function ForgotPasswordScreen({ navigation }: Props) {
               activeOpacity={0.8}
               style={styles.backButton}
             >
-              <Text style={styles.backButtonText}>← Back to login</Text>
+              <Text style={styles.backButtonText}>← {t('forgot.backToLogin')}</Text>
             </TouchableOpacity>
 
             {step === 'email' ? (
               <>
-                <Text style={styles.title}>Forgot Password?</Text>
-                <Text style={styles.subtitle}>
-                  Enter your email address and we’ll send you a one-time
-                  verification code.
+                <Text style={[styles.title, isRtl && styles.textRight]}>
+                  {t('forgot.title')}
+                </Text>
+                <Text style={[styles.subtitle, isRtl && styles.textRight]}>
+                  {t('forgot.subtitle')}
                 </Text>
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Email Address</Text>
+                  <Text style={[styles.label, isRtl && styles.textRight]}>
+                    {t('forgot.emailLabel')}
+                  </Text>
                   <TextInput
                     style={styles.input}
-                    placeholder="you@gmail.com"
+                    placeholder={t('forgot.emailPlaceholder')}
                     placeholderTextColor="#9CA3AF"
                     keyboardType="email-address"
                     autoCapitalize="none"
@@ -124,7 +129,9 @@ export function ForgotPasswordScreen({ navigation }: Props) {
 
                 {error ? (
                   <View style={styles.errorBox}>
-                    <Text style={styles.errorText}>{error}</Text>
+                    <Text style={[styles.errorText, isRtl && styles.textRight]}>
+                      {error}
+                    </Text>
                   </View>
                 ) : null}
 
@@ -137,14 +144,14 @@ export function ForgotPasswordScreen({ navigation }: Props) {
                   {isLoading ? (
                     <ActivityIndicator color="#FFFFFF" />
                   ) : (
-                    <Text style={styles.primaryButtonText}>Send OTP</Text>
+                    <Text style={styles.primaryButtonText}>{t('forgot.sendOtp')}</Text>
                   )}
                 </TouchableOpacity>
 
                 <View style={styles.footer}>
-                  <Text style={styles.footerText}>Remember your password? </Text>
+                  <Text style={styles.footerText}>{t('forgot.remember')} </Text>
                   <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                    <Text style={styles.footerLink}>Sign in</Text>
+                    <Text style={styles.footerLink}>{t('forgot.signIn')}</Text>
                   </TouchableOpacity>
                 </View>
               </>
@@ -154,17 +161,19 @@ export function ForgotPasswordScreen({ navigation }: Props) {
                   <Text style={styles.successIcon}>✓</Text>
                 </View>
 
-                <Text style={[styles.title, styles.center]}>OTP Sent</Text>
+                <Text style={[styles.title, styles.center]}>{t('forgot.otpSent')}</Text>
                 <Text style={[styles.subtitle, styles.center]}>
-                  We sent a verification code to
+                  {t('forgot.sentTo')}
                 </Text>
                 <Text style={styles.emailText}>{email}</Text>
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>OTP Code</Text>
+                  <Text style={[styles.label, isRtl && styles.textRight]}>
+                    {t('forgot.otpCode')}
+                  </Text>
                   <TextInput
                     style={styles.input}
-                    placeholder="Enter the OTP code"
+                    placeholder={t('forgot.otpPlaceholder')}
                     placeholderTextColor="#9CA3AF"
                     keyboardType="number-pad"
                     value={otp}
@@ -177,7 +186,9 @@ export function ForgotPasswordScreen({ navigation }: Props) {
 
                 {error ? (
                   <View style={styles.errorBox}>
-                    <Text style={styles.errorText}>{error}</Text>
+                    <Text style={[styles.errorText, isRtl && styles.textRight]}>
+                      {error}
+                    </Text>
                   </View>
                 ) : null}
 
@@ -190,7 +201,7 @@ export function ForgotPasswordScreen({ navigation }: Props) {
                   {isLoading ? (
                     <ActivityIndicator color="#FFFFFF" />
                   ) : (
-                    <Text style={styles.primaryButtonText}>Verify OTP</Text>
+                    <Text style={styles.primaryButtonText}>{t('forgot.verifyOtp')}</Text>
                   )}
                 </TouchableOpacity>
 
@@ -199,7 +210,7 @@ export function ForgotPasswordScreen({ navigation }: Props) {
                   style={styles.changeEmailButton}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.changeEmailText}>Change email</Text>
+                  <Text style={styles.changeEmailText}>{t('forgot.changeEmail')}</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -354,5 +365,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textLight,
     fontWeight: '600',
+  },
+  textRight: {
+    textAlign: 'right',
   },
 });

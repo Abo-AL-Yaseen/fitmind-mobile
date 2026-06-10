@@ -23,6 +23,7 @@ import { useAssistantChatMutation } from '../hooks/assistant/mutations/useAssist
 import { useStoredAuthQuery } from '../hooks/auth/queries/useStoredAuthQuery';
 import type { AssistantSource } from '../services/assistant';
 import { Colors } from '../constants/theme';
+import { useTranslation } from '../i18n';
 
 type ChatRole = 'user' | 'assistant';
 
@@ -35,15 +36,14 @@ type ChatMessage = {
   createdAt: Date;
 };
 
-const ASSISTANT_ERROR_MESSAGE =
-  'FitMind Assistant is temporarily unavailable. Please try again.';
-
-const INITIAL_MESSAGE: ChatMessage = {
-  id: 'initial-assistant-message',
-  role: 'assistant',
-  text: "Hi, I'm FitMind Assistant. Ask me about your workout, nutrition, injuries, or plan.",
-  createdAt: new Date(),
-};
+function createInitialMessage(t: (key: string) => string): ChatMessage {
+  return {
+    id: 'initial-assistant-message',
+    role: 'assistant',
+    text: t('assistant.initial'),
+    createdAt: new Date(),
+  };
+}
 
 function createMessageId(role: ChatRole) {
   return `${role}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -66,7 +66,10 @@ function normalizeWarnings(warnings?: string[]) {
 }
 
 export default function AssistantScreen({ navigation }: any) {
-  const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_MESSAGE]);
+  const { t, isRtl } = useTranslation();
+  const [messages, setMessages] = useState<ChatMessage[]>(() => [
+    createInitialMessage(t),
+  ]);
   const [inputText, setInputText] = useState('');
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const chatMutation = useAssistantChatMutation();
@@ -79,8 +82,11 @@ export default function AssistantScreen({ navigation }: any) {
   const canSend = trimmedInput.length > 0 && !isLoading;
 
   const inputPlaceholder = useMemo(
-    () => (isLoading ? 'Assistant is thinking...' : 'Ask FitMind Assistant...'),
-    [isLoading]
+    () =>
+      isLoading
+        ? t('assistant.placeholderThinking')
+        : t('assistant.placeholder'),
+    [isLoading, t]
   );
 
   const scrollToEnd = useCallback((animated = true) => {
@@ -104,6 +110,19 @@ export default function AssistantScreen({ navigation }: any) {
       keyboardSubscription.remove();
     };
   }, [scrollToEnd]);
+
+  useEffect(() => {
+    setMessages((current) => {
+      if (
+        current.length !== 1 ||
+        current[0]?.id !== 'initial-assistant-message'
+      ) {
+        return current;
+      }
+
+      return [createInitialMessage(t)];
+    });
+  }, [t]);
 
   const appendMessages = (nextMessages: ChatMessage[]) => {
     setMessages((current) => [...current, ...nextMessages]);
@@ -132,7 +151,7 @@ export default function AssistantScreen({ navigation }: any) {
         {
           id: createMessageId('assistant'),
           role: 'assistant',
-          text: String(response.answer || '').trim() || ASSISTANT_ERROR_MESSAGE,
+          text: String(response.answer || '').trim() || t('assistant.error'),
           warnings: normalizeWarnings(response.warnings),
           sources: response.sources ?? [],
           createdAt: new Date(),
@@ -143,7 +162,7 @@ export default function AssistantScreen({ navigation }: any) {
         {
           id: createMessageId('assistant'),
           role: 'assistant',
-          text: ASSISTANT_ERROR_MESSAGE,
+          text: t('assistant.error'),
           createdAt: new Date(),
         },
       ]);
@@ -160,6 +179,7 @@ export default function AssistantScreen({ navigation }: any) {
         style={[
           styles.messageRow,
           isUser ? styles.messageRowUser : styles.messageRowAssistant,
+          isRtl && !isUser && styles.messageRowAssistantRtl,
         ]}
       >
         {!isUser && (
@@ -178,6 +198,7 @@ export default function AssistantScreen({ navigation }: any) {
             style={[
               styles.messageText,
               isUser ? styles.userMessageText : styles.assistantMessageText,
+              isRtl && styles.textRight,
             ]}
           >
             {item.text}
@@ -187,7 +208,7 @@ export default function AssistantScreen({ navigation }: any) {
             <View style={styles.warningsBox}>
               <View style={styles.warningHeader}>
                 <AlertTriangle color="#B45309" size={13} />
-                <Text style={styles.warningTitle}>Warnings</Text>
+                <Text style={styles.warningTitle}>{t('assistant.warnings')}</Text>
               </View>
               {warnings.map((warning, index) => (
                 <Text key={`${item.id}-warning-${index}`} style={styles.warningText}>
@@ -199,7 +220,7 @@ export default function AssistantScreen({ navigation }: any) {
 
           {!isUser && sourceNames.length > 0 && (
             <Text style={styles.sourcesText}>
-              Sources: {sourceNames.join(', ')}
+              {t('assistant.sources', { sources: sourceNames.join(', ') })}
             </Text>
           )}
         </View>
@@ -234,9 +255,9 @@ export default function AssistantScreen({ navigation }: any) {
           <View style={styles.restrictedIcon}>
             <Sparkles color={Colors.primary} size={24} />
           </View>
-          <Text style={styles.restrictedTitle}>FitMind Assistant</Text>
+          <Text style={styles.restrictedTitle}>{t('assistant.restrictedTitle')}</Text>
           <Text style={styles.restrictedText}>
-            FitMind Assistant is available for members only.
+            {t('assistant.restrictedText')}
           </Text>
         </View>
       </SafeAreaView>
@@ -250,7 +271,7 @@ export default function AssistantScreen({ navigation }: any) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={0}
       >
-        <View style={styles.header}>
+        <View style={[styles.header, isRtl && styles.rowReverse]}>
           <TouchableOpacity
             style={styles.backButton}
             activeOpacity={0.75}
@@ -264,8 +285,12 @@ export default function AssistantScreen({ navigation }: any) {
           </View>
 
           <View style={styles.headerTextWrap}>
-            <Text style={styles.headerTitle}>FitMind Assistant</Text>
-            <Text style={styles.headerSubtitle}>Workout, nutrition, and injury help</Text>
+            <Text style={[styles.headerTitle, isRtl && styles.textRight]}>
+              {t('assistant.title')}
+            </Text>
+            <Text style={[styles.headerSubtitle, isRtl && styles.textRight]}>
+              {t('assistant.subtitle')}
+            </Text>
           </View>
         </View>
 
@@ -285,17 +310,17 @@ export default function AssistantScreen({ navigation }: any) {
         {isLoading && (
           <View style={styles.typingRow}>
             <ActivityIndicator color={Colors.primary} size="small" />
-            <Text style={styles.typingText}>FitMind Assistant is typing...</Text>
+            <Text style={styles.typingText}>{t('assistant.typing')}</Text>
           </View>
         )}
 
-        <View style={styles.inputBar}>
+        <View style={[styles.inputBar, isRtl && styles.rowReverse]}>
           <TextInput
             value={inputText}
             onChangeText={setInputText}
             placeholder={inputPlaceholder}
             placeholderTextColor="#9CA3AF"
-            style={styles.input}
+            style={[styles.input, isRtl && styles.textRight]}
             multiline
             maxLength={700}
             editable={!isLoading}
@@ -426,6 +451,9 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     alignItems: 'flex-start',
   },
+  messageRowAssistantRtl: {
+    flexDirection: 'row-reverse',
+  },
   assistantAvatar: {
     width: 32,
     height: 32,
@@ -545,5 +573,11 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     backgroundColor: '#A7CFC9',
+  },
+  rowReverse: {
+    flexDirection: 'row-reverse',
+  },
+  textRight: {
+    textAlign: 'right',
   },
 });

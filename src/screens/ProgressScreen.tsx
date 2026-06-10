@@ -5,10 +5,12 @@ import { LineChart, BarChart } from 'react-native-chart-kit';
 import { Dimensions } from 'react-native';
 import { weightData, bodyFatData, measurementsData } from '../data/progressData';
 import { AITipCard } from '../components/AITipCard';
+import { useTranslation } from '../i18n';
 
 const screenWidth = Dimensions.get('window').width;
 
 export default function ProgressScreen() {
+  const { t, isRtl } = useTranslation();
   const [showAddMeasurement, setShowAddMeasurement] = useState(false);
 
   return (
@@ -16,21 +18,29 @@ export default function ProgressScreen() {
       <View style={styles.content}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Progress Tracking</Text>
-          <Text style={styles.headerSubtitle}>Your fitness journey snapshot</Text>
+          <Text style={[styles.headerTitle, isRtl && styles.textRight]}>
+            {t('progress.title')}
+          </Text>
+          <Text style={[styles.headerSubtitle, isRtl && styles.textRight]}>
+            {t('progress.subtitle')}
+          </Text>
         </View>
 
         {/* Key Stats */}
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
-            <Text style={styles.statLabel}>Current Weight</Text>
+            <Text style={[styles.statLabel, isRtl && styles.textRight]}>
+              {t('progress.currentWeight')}
+            </Text>
             <View style={styles.statValueRow}>
               <Text style={styles.statValue}>176 </Text>
               <Text style={styles.statUnit}>lbs</Text>
             </View>
             <View style={styles.statChange}>
               <TrendingDown color="#10B981" size={14} />
-              <Text style={styles.statChangeText}>-9 lbs total</Text>
+              <Text style={styles.statChangeText}>
+                {t('progress.totalLossLbs', { value: '-9' })}
+              </Text>
             </View>
             <View style={styles.progressBar}>
               <View style={[styles.progressBarFill, { width: '60%', backgroundColor: '#34D399' }]} />
@@ -38,7 +48,9 @@ export default function ProgressScreen() {
           </View>
 
           <View style={styles.statCard}>
-            <Text style={styles.statLabel}>Body Fat</Text>
+            <Text style={[styles.statLabel, isRtl && styles.textRight]}>
+              {t('progress.bodyFat')}
+            </Text>
             <View style={styles.statValueRow}>
               <Text style={styles.statValue}>18 </Text>
               <Text style={styles.statUnit}>%</Text>
@@ -55,14 +67,14 @@ export default function ProgressScreen() {
 
         {/* AI Insight */}
         <AITipCard
-          title="Progress Insight"
-          text="Excellent progress! You're losing weight at a healthy rate of 0.75 lbs/week. Keep it up!"
+          title={t('progress.progressInsight')}
+          text={t('progress.progressInsightText')}
         />
 
         {/* Weight Chart */}
         <View style={styles.chartCard}>
           <View style={styles.chartHeader}>
-            <Text style={styles.chartTitle}>Weight Trend</Text>
+            <Text style={styles.chartTitle}>{t('progress.weightTrend')}</Text>
             <View style={styles.chartBadge}>
               <Text style={styles.chartBadgeText}>-9 lbs</Text>
             </View>
@@ -104,7 +116,7 @@ export default function ProgressScreen() {
         {/* Body Fat Chart */}
         <View style={styles.chartCard}>
           <View style={styles.chartHeader}>
-            <Text style={styles.chartTitle}>Body Fat %</Text>
+            <Text style={styles.chartTitle}>{t('progress.bodyFatPercent')}</Text>
             <View style={[styles.chartBadge, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}>
               <Text style={[styles.chartBadgeText, { color: '#2563EB' }]}>-4%</Text>
             </View>
@@ -138,8 +150,10 @@ export default function ProgressScreen() {
 
         {/* Body Measurements */}
         <View style={styles.card}>
-          <View style={styles.measurementsHeader}>
-            <Text style={styles.cardTitle}>Body Measurements</Text>
+          <View style={[styles.measurementsHeader, isRtl && styles.rowReverse]}>
+            <Text style={[styles.cardTitle, isRtl && styles.textRight]}>
+              {t('progress.bodyMeasurements')}
+            </Text>
             <TouchableOpacity
               onPress={() => setShowAddMeasurement(!showAddMeasurement)}
               style={[
@@ -160,7 +174,9 @@ export default function ProgressScreen() {
             <View style={styles.addMeasurementForm}>
               <View style={styles.inputRow}>
                 <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Weight (lbs)</Text>
+                  <Text style={[styles.inputLabel, isRtl && styles.textRight]}>
+                    {t('progress.weightLbs')}
+                  </Text>
                   <TextInput
                     placeholder="176"
                     keyboardType="numeric"
@@ -168,7 +184,9 @@ export default function ProgressScreen() {
                   />
                 </View>
                 <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Body Fat %</Text>
+                  <Text style={[styles.inputLabel, isRtl && styles.textRight]}>
+                    {t('progress.bodyFatInput')}
+                  </Text>
                   <TextInput
                     placeholder="18"
                     keyboardType="numeric"
@@ -178,7 +196,9 @@ export default function ProgressScreen() {
               </View>
               <View style={styles.inputRow}>
                 <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Chest (in)</Text>
+                  <Text style={[styles.inputLabel, isRtl && styles.textRight]}>
+                    {t('progress.chestIn')}
+                  </Text>
                   <TextInput
                     placeholder="42"
                     keyboardType="numeric"
@@ -186,7 +206,9 @@ export default function ProgressScreen() {
                   />
                 </View>
                 <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Arms (in)</Text>
+                  <Text style={[styles.inputLabel, isRtl && styles.textRight]}>
+                    {t('progress.armsIn')}
+                  </Text>
                   <TextInput
                     placeholder="15.5"
                     keyboardType="numeric"
@@ -195,21 +217,26 @@ export default function ProgressScreen() {
                 </View>
               </View>
               <TouchableOpacity style={styles.saveButton} activeOpacity={0.8}>
-                <Text style={styles.saveButtonText}>Save Measurements</Text>
+                <Text style={styles.saveButtonText}>{t('progress.saveMeasurements')}</Text>
               </TouchableOpacity>
             </View>
           )}
 
           <View style={styles.measurementsList}>
             {measurementsData.map((measurement, index) => (
-              <View key={index} style={styles.measurementItem}>
-                <View style={styles.measurementLeft}>
+              <View
+                key={index}
+                style={[styles.measurementItem, isRtl && styles.rowReverse]}
+              >
+                <View style={[styles.measurementLeft, isRtl && styles.rowReverse]}>
                   <View style={styles.measurementIcon}>
                     <Target color="#0D7D6D" size={16} />
                   </View>
                   <View>
                     <Text style={styles.measurementName}>{measurement.part}</Text>
-                    <Text style={styles.measurementValue}>{measurement.value} inches</Text>
+                    <Text style={styles.measurementValue}>
+                      {measurement.value} {t('progress.inches')}
+                    </Text>
                   </View>
                 </View>
                 <View style={[
@@ -493,5 +520,11 @@ const styles = StyleSheet.create({
   measurementChangeText: {
     fontSize: 12,
     fontWeight: '600',
+  },
+  rowReverse: {
+    flexDirection: 'row-reverse',
+  },
+  textRight: {
+    textAlign: 'right',
   },
 });

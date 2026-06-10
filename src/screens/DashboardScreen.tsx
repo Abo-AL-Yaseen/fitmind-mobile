@@ -13,7 +13,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import {
   Dumbbell,
   Apple,
-  TrendingUp,
   MessageCircle,
   Flame,
   Trophy,
@@ -35,6 +34,7 @@ import { ProgressBar } from '../components/ProgressBar';
 import { useDashboardSummaryQuery } from '../hooks/dashboard/queries/useDashboardSummaryQuery';
 import { clearAuth } from '../services/auth';
 import { ApiError } from '../services/api';
+import { useTranslation } from '../i18n';
 
 function getErrorStatus(error: unknown) {
   return error instanceof ApiError ? error.status : undefined;
@@ -71,6 +71,7 @@ function isSubscriptionInactiveError(error: unknown) {
 }
 
 export default function DashboardScreen({ navigation }: any) {
+  const { t, isRtl, language } = useTranslation();
   const queryClient = useQueryClient();
   const subscriptionAlertShownRef = useRef(false);
   const {
@@ -115,8 +116,8 @@ export default function DashboardScreen({ navigation }: any) {
     subscriptionAlertShownRef.current = true;
 
     Alert.alert(
-      'Subscription Required',
-      'Your subscription is not active. Please renew your subscription to continue.',
+      t('common.subscriptionRequired'),
+      t('common.subscriptionMessage'),
       [
         {
           text: 'OK',
@@ -127,31 +128,30 @@ export default function DashboardScreen({ navigation }: any) {
       ],
       { cancelable: false }
     );
-  }, [hasSubscriptionError, navigateToLogin]);
+  }, [hasSubscriptionError, navigateToLogin, t]);
 
   const today = useMemo(
     () =>
-      new Date().toLocaleDateString('en-US', {
+      new Date().toLocaleDateString(language === 'ar' ? 'ar' : 'en-US', {
         weekday: 'long',
         month: 'long',
         day: 'numeric',
       }),
-    []
+    [language]
   );
 
   const dayName = useMemo(
     () =>
-      new Date().toLocaleDateString('en-US', {
+      new Date().toLocaleDateString(language === 'ar' ? 'ar' : 'en-US', {
         weekday: 'long',
       }),
-    []
+    [language]
   );
 
   const iconMap: Record<string, any> = {
     User,
     Dumbbell,
     Apple,
-    TrendingUp,
     MessageCircle,
     Flame,
     Trophy,
@@ -164,7 +164,9 @@ export default function DashboardScreen({ navigation }: any) {
       quickLinks.filter(
         (link) =>
           link.path !== 'AICoach' &&
+          link.path !== 'Progress' &&
           link.label?.toLowerCase() !== 'ai coach' &&
+          link.label?.toLowerCase() !== 'progress' &&
           link.icon !== 'MessageCircle'
       ),
     []
@@ -174,7 +176,7 @@ export default function DashboardScreen({ navigation }: any) {
     return (
       <View style={styles.centerState}>
         <ActivityIndicator size="large" color="#0D7D6D" />
-        <Text style={styles.centerStateText}>Loading dashboard...</Text>
+        <Text style={styles.centerStateText}>{t('dashboard.loading')}</Text>
       </View>
     );
   }
@@ -182,9 +184,9 @@ export default function DashboardScreen({ navigation }: any) {
   if (hasSubscriptionError && !summary) {
     return (
       <View style={styles.centerState}>
-        <Text style={styles.errorTitle}>Subscription Required</Text>
+        <Text style={styles.errorTitle}>{t('dashboard.subscriptionTitle')}</Text>
         <Text style={styles.errorText}>
-          Your subscription is not active. Please renew your subscription to continue.
+          {t('common.subscriptionMessage')}
         </Text>
       </View>
     );
@@ -196,12 +198,12 @@ export default function DashboardScreen({ navigation }: any) {
         <View style={styles.onboardingIcon}>
           <UserCircle color="#0D7D6D" size={34} />
         </View>
-        <Text style={styles.errorTitle}>Complete your profile first</Text>
+        <Text style={styles.errorTitle}>{t('dashboard.profileMissingTitle')}</Text>
         <Text style={styles.errorText}>
-          Please fill in your profile information so we can prepare your dashboard.
+          {t('dashboard.profileMissingText')}
         </Text>
         <TouchableOpacity style={styles.retryButton} onPress={handleCompleteProfile}>
-          <Text style={styles.retryButtonText}>Complete Profile</Text>
+          <Text style={styles.retryButtonText}>{t('dashboard.completeProfile')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -210,12 +212,12 @@ export default function DashboardScreen({ navigation }: any) {
   if (error && !summary) {
     return (
       <View style={styles.centerState}>
-        <Text style={styles.errorTitle}>Couldn’t load dashboard</Text>
+        <Text style={styles.errorTitle}>{t('dashboard.couldNotLoad')}</Text>
         <Text style={styles.errorText}>
-          {error instanceof Error ? error.message : 'Failed to load dashboard.'}
+          {error instanceof Error ? error.message : t('dashboard.failedLoad')}
         </Text>
         <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
-          <Text style={styles.retryButtonText}>Try Again</Text>
+          <Text style={styles.retryButtonText}>{t('common.tryAgain')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -236,50 +238,59 @@ export default function DashboardScreen({ navigation }: any) {
       <View style={styles.content}>
         <View style={styles.heroCard}>
           <Text style={styles.heroDate}>{today}</Text>
-          <Text style={styles.heroTitle}>{summary?.heroTitle ?? 'Welcome back! 👋'}</Text>
+          <Text style={[styles.heroTitle, isRtl && styles.textRight]}>
+            {summary?.heroTitle ?? t('dashboard.welcome')}
+          </Text>
 
-          <View style={styles.heroGoal}>
+          <View style={[styles.heroGoal, isRtl && styles.rowReverse]}>
             <Target color="#7FD4C9" size={18} />
-            <Text style={styles.heroGoalText}>
-              {summary?.heroGoalText ?? 'Stay consistent and keep moving today.'}
+            <Text style={[styles.heroGoalText, isRtl && styles.textRight]}>
+              {summary?.heroGoalText ?? t('dashboard.stayConsistent')}
             </Text>
           </View>
 
-          <View style={styles.heroMetaRow}>
+          <View style={[styles.heroMetaRow, isRtl && styles.rowReverse]}>
             <TouchableOpacity
               style={styles.heroMetaBadge}
               activeOpacity={0.75}
               onPress={() => navigation.navigate('Settings')}
             >
               <Text style={styles.heroMetaBadgeText}>
-                Goal: {goalChipLabel}
+                {t('dashboard.goal')}: {goalChipLabel}
               </Text>
             </TouchableOpacity>
 
             <View style={styles.heroMetaBadge}>
               <Text style={styles.heroMetaBadgeText}>
-                Nutrition: {summary?.activeNutritionPlanName ?? 'No Plan'}
+                {t('dashboard.nutrition')}:{' '}
+                {summary?.activeNutritionPlanName ?? t('dashboard.noPlan')}
               </Text>
             </View>
           </View>
 
-          <View style={styles.heroInfoGrid}>
+          <View style={[styles.heroInfoGrid, isRtl && styles.rowReverse]}>
             <View style={styles.heroInfoCard}>
-              <Text style={styles.heroInfoLabel}>Age</Text>
+              <Text style={[styles.heroInfoLabel, isRtl && styles.textRight]}>
+                {t('dashboard.age')}
+              </Text>
               <Text style={styles.heroInfoValue}>
                 {summary?.profile.age != null ? summary.profile.age : '--'}
               </Text>
             </View>
 
             <View style={styles.heroInfoCard}>
-              <Text style={styles.heroInfoLabel}>Height</Text>
+              <Text style={[styles.heroInfoLabel, isRtl && styles.textRight]}>
+                {t('dashboard.height')}
+              </Text>
               <Text style={styles.heroInfoValue}>
                 {summary?.profile.height != null ? `${summary.profile.height} cm` : '--'}
               </Text>
             </View>
 
             <View style={styles.heroInfoCard}>
-              <Text style={styles.heroInfoLabel}>Weight</Text>
+              <Text style={[styles.heroInfoLabel, isRtl && styles.textRight]}>
+                {t('dashboard.weight')}
+              </Text>
               <Text style={styles.heroInfoValue}>
                 {summary?.profile.weight != null ? `${summary.profile.weight} kg` : '--'}
               </Text>
@@ -301,10 +312,10 @@ export default function DashboardScreen({ navigation }: any) {
             <View style={styles.assistantGlassPanelTop} />
             <View style={styles.assistantGlassPanelBottom} />
 
-            <View style={styles.assistantHeaderRow}>
+            <View style={[styles.assistantHeaderRow, isRtl && styles.rowReverse]}>
               <View style={styles.assistantBadge}>
                 <Sparkles color="#BFF6EC" size={12} />
-                <Text style={styles.assistantBadgeText}>AI COACH</Text>
+                <Text style={styles.assistantBadgeText}>{t('dashboard.aiBadge')}</Text>
               </View>
 
               <View style={styles.assistantIcon}>
@@ -312,22 +323,28 @@ export default function DashboardScreen({ navigation }: any) {
               </View>
             </View>
 
-            <Text style={styles.assistantTitle}>FitMind Assistant</Text>
-            <Text style={styles.assistantSubtitle}>
-              Ask before your next workout, meal, or recovery move.
+            <Text style={[styles.assistantTitle, isRtl && styles.textRight]}>
+              {t('dashboard.assistantTitle')}
+            </Text>
+            <Text style={[styles.assistantSubtitle, isRtl && styles.textRight]}>
+              {t('dashboard.assistantSubtitle')}
             </Text>
 
-            <View style={styles.assistantFooterRow}>
-              <View style={styles.assistantChipRow}>
-                {['Workout', 'Food', 'Pain'].map((chip) => (
+            <View style={[styles.assistantFooterRow, isRtl && styles.rowReverse]}>
+              <View style={[styles.assistantChipRow, isRtl && styles.rowReverse]}>
+                {[
+                  t('dashboard.chipWorkout'),
+                  t('dashboard.chipFood'),
+                  t('dashboard.chipPain'),
+                ].map((chip) => (
                   <View key={chip} style={styles.assistantChip}>
                     <Text style={styles.assistantChipText}>{chip}</Text>
                   </View>
                 ))}
               </View>
 
-              <View style={styles.assistantCtaPill}>
-                <Text style={styles.assistantCtaText}>Ask AI</Text>
+              <View style={[styles.assistantCtaPill, isRtl && styles.rowReverse]}>
+                <Text style={styles.assistantCtaText}>{t('dashboard.askAi')}</Text>
                 <ChevronRight color="#063D36" size={14} strokeWidth={2.8} />
               </View>
             </View>
@@ -349,7 +366,9 @@ export default function DashboardScreen({ navigation }: any) {
 
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>Today&apos;s Progress</Text>
+            <Text style={[styles.cardTitle, isRtl && styles.textRight]}>
+              {t('dashboard.todayProgress')}
+            </Text>
             <View style={styles.dayBadge}>
               <Text style={styles.dayBadgeText}>{dayName}</Text>
             </View>
@@ -369,7 +388,9 @@ export default function DashboardScreen({ navigation }: any) {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Access</Text>
+          <Text style={[styles.sectionTitle, isRtl && styles.textRight]}>
+            {t('dashboard.quickAccess')}
+          </Text>
           <View style={styles.quickLinksGrid}>
             {filteredQuickLinks.map((link) => {
               const LinkIcon = iconMap[link.icon];
@@ -377,7 +398,7 @@ export default function DashboardScreen({ navigation }: any) {
               return (
                 <TouchableOpacity
                   key={link.path}
-                  style={styles.quickLinkCard}
+                  style={[styles.quickLinkCard, isRtl && styles.rowReverse]}
                   onPress={() => navigation.navigate(link.path)}
                   activeOpacity={0.7}
                 >
@@ -385,8 +406,10 @@ export default function DashboardScreen({ navigation }: any) {
                     <LinkIcon color={link.color} size={22} />
                   </View>
 
-                  <View style={styles.quickLinkContent}>
-                    <Text style={styles.quickLinkLabel}>{link.label}</Text>
+                  <View style={[styles.quickLinkContent, isRtl && styles.rowReverse]}>
+                    <Text style={[styles.quickLinkLabel, isRtl && styles.textRight]}>
+                      {t(`dashboard.quick.${link.path}`)}
+                    </Text>
                     <ChevronRight color="#D1D5DB" size={14} />
                   </View>
                 </TouchableOpacity>
@@ -396,21 +419,23 @@ export default function DashboardScreen({ navigation }: any) {
         </View>
 
         <View style={styles.generalCard}>
-          <View style={styles.generalHeader}>
+          <View style={[styles.generalHeader, isRtl && styles.rowReverse]}>
             <View style={styles.generalIcon}>
               <ShieldCheck color="#FFFFFF" size={18} />
             </View>
 
             <View style={styles.generalHeaderText}>
-              <Text style={styles.generalEyebrow}>FitMind Experience</Text>
-              <Text style={styles.generalTitle}>Stay Consistent, Stay Strong</Text>
+              <Text style={[styles.generalEyebrow, isRtl && styles.textRight]}>
+                {t('dashboard.experienceEyebrow')}
+              </Text>
+              <Text style={[styles.generalTitle, isRtl && styles.textRight]}>
+                {t('dashboard.experienceTitle')}
+              </Text>
             </View>
           </View>
 
-          <Text style={styles.generalDescription}>
-            Your dashboard is now built from your live profile, goals, workout plans,
-            and nutrition plans so you can track the most relevant parts of your
-            journey in one place.
+          <Text style={[styles.generalDescription, isRtl && styles.textRight]}>
+            {t('dashboard.experienceText')}
           </Text>
         </View>
       </View>
@@ -804,5 +829,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 22,
     color: '#374151',
+  },
+  rowReverse: {
+    flexDirection: 'row-reverse',
+  },
+  textRight: {
+    textAlign: 'right',
   },
 });

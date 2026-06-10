@@ -15,12 +15,14 @@ import { AITipCard } from '../components/AITipCard';
 import type { RootStackParamList } from '../navigation/Navigation';
 import type { PublicNewsItem } from '../services/news';
 import { usePublicNewsQuery } from '../hooks/news/queries/usePublicNewsQuery';
+import { useTranslation } from '../i18n';
 
 const NEWS_PER_PAGE = 10;
 
 type NewsScreenProps = NativeStackScreenProps<RootStackParamList, 'News'>;
 
 export default function NewsScreen({ route }: NewsScreenProps) {
+  const { t, isRtl, language } = useTranslation();
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedNews, setSelectedNews] = useState<PublicNewsItem | null>(null);
   const [detailsVisible, setDetailsVisible] = useState(false);
@@ -48,7 +50,7 @@ export default function NewsScreen({ route }: NewsScreenProps) {
     error instanceof Error
       ? error.message
       : error
-        ? 'Failed to load news. Please try again.'
+        ? t('news.loadFailed')
         : '';
 
   const featuredNews = useMemo(() => {
@@ -69,35 +71,39 @@ export default function NewsScreen({ route }: NewsScreenProps) {
   function getRemainingDaysText(days: number | null): string | null {
     if (days === null) return null;
 
-    if (days <= 0) return 'Expired';
+    if (days <= 0) return t('news.expired');
 
     const totalMinutes = Math.ceil(days * 24 * 60);
 
     if (totalMinutes < 60) {
       return totalMinutes === 1
-        ? '1 minute left'
-        : `${totalMinutes} minutes left`;
+        ? t('news.minuteLeft')
+        : t('news.minutesLeft', { count: totalMinutes });
     }
 
     const totalHours = Math.ceil(days * 24);
 
     if (totalHours < 24) {
-      return totalHours === 1 ? '1 hour left' : `${totalHours} hours left`;
+      return totalHours === 1
+        ? t('news.hourLeft')
+        : t('news.hoursLeft', { count: totalHours });
     }
 
     const totalDays = Math.ceil(days);
 
-    return totalDays === 1 ? '1 day left' : `${totalDays} days left`;
+    return totalDays === 1
+      ? t('news.dayLeft')
+      : t('news.daysLeft', { count: totalDays });
   }
 
   function formatDateTime(value: string | null): string {
-    if (!value) return 'No date';
+    if (!value) return t('common.noDate');
 
     const date = new Date(value.replace(' ', 'T'));
 
     if (Number.isNaN(date.getTime())) return value;
 
-    return date.toLocaleString();
+    return date.toLocaleString(language === 'ar' ? 'ar' : undefined);
   }
 
   function openDetails(item: PublicNewsItem) {
@@ -162,14 +168,18 @@ export default function NewsScreen({ route }: NewsScreenProps) {
       >
         <View style={styles.content}>
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>News & Offers</Text>
-            <Text style={styles.headerSubtitle}>Stay updated with the latest</Text>
+            <Text style={[styles.headerTitle, isRtl && styles.textRight]}>
+              {t('news.title')}
+            </Text>
+            <Text style={[styles.headerSubtitle, isRtl && styles.textRight]}>
+              {t('news.subtitle')}
+            </Text>
           </View>
 
           {isLoading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#0D7D6D" />
-              <Text style={styles.loadingText}>Loading news...</Text>
+              <Text style={styles.loadingText}>{t('news.loading')}</Text>
             </View>
           ) : generalError ? (
             <View style={styles.errorBox}>
@@ -180,7 +190,7 @@ export default function NewsScreen({ route }: NewsScreenProps) {
                 activeOpacity={0.8}
                 onPress={() => refetch()}
               >
-                <Text style={styles.retryButtonText}>Try Again</Text>
+                <Text style={styles.retryButtonText}>{t('common.tryAgain')}</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -191,14 +201,18 @@ export default function NewsScreen({ route }: NewsScreenProps) {
                   onPress={() => openDetails(featuredNews)}
                   style={styles.featuredCard}
                 >
-                  <View style={styles.featuredTag}>
+                  <View style={[styles.featuredTag, isRtl && styles.rowReverse]}>
                     <Tag color="#FBBF24" size={14} />
-                    <Text style={styles.featuredTagText}>FEATURED OFFER</Text>
+                    <Text style={styles.featuredTagText}>{t('news.featuredOffer')}</Text>
                   </View>
 
                   <Text style={styles.featuredEmoji}>💪</Text>
-                  <Text style={styles.featuredTitle}>{featuredNews.title}</Text>
-                  <Text style={styles.featuredText}>{featuredNews.content}</Text>
+                  <Text style={[styles.featuredTitle, isRtl && styles.textRight]}>
+                    {featuredNews.title}
+                  </Text>
+                  <Text style={[styles.featuredText, isRtl && styles.textRight]}>
+                    {featuredNews.content}
+                  </Text>
 
                   <View style={styles.featuredMetaRow}>
                     <Text style={styles.featuredMetaText}>
@@ -206,7 +220,7 @@ export default function NewsScreen({ route }: NewsScreenProps) {
                     </Text>
                     <Text style={styles.featuredMetaDot}>•</Text>
                     <Text style={styles.featuredMetaText}>
-                      {featuredNews.formatted_date || 'No date'}
+                      {featuredNews.formatted_date || t('common.noDate')}
                     </Text>
                   </View>
 
@@ -218,24 +232,26 @@ export default function NewsScreen({ route }: NewsScreenProps) {
                     </View>
                   )}
 
-                  <View style={styles.featuredButton}>
-                    <Text style={styles.featuredButtonText}>Learn More</Text>
+                  <View style={[styles.featuredButton, isRtl && styles.rowReverse]}>
+                    <Text style={styles.featuredButtonText}>{t('news.learnMore')}</Text>
                     <ArrowRight color="#0D7D6D" size={16} />
                   </View>
                 </TouchableOpacity>
               )}
 
               <AITipCard
-                title="Quick Tip"
-                text="Staying hydrated is crucial for performance. Aim for at least 8 glasses of water daily!"
+                title={t('news.quickTipTitle')}
+                text={t('news.quickTipText')}
               />
 
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Latest Updates</Text>
-                <Text style={styles.sectionSubtitle}>
+                <Text style={[styles.sectionTitle, isRtl && styles.textRight]}>
+                  {t('news.latestUpdates')}
+                </Text>
+                <Text style={[styles.sectionSubtitle, isRtl && styles.textRight]}>
                   {from !== null && to !== null
-                    ? `Showing ${from}-${to} of ${total}`
-                    : `${total} items`}
+                    ? t('news.showingRange', { from, to, total })
+                    : t('news.items', { total })}
                 </Text>
               </View>
 
@@ -244,7 +260,7 @@ export default function NewsScreen({ route }: NewsScreenProps) {
                   latestNews.map((item) => (
                     <TouchableOpacity
                       key={item.id}
-                      style={styles.newsCard}
+                      style={[styles.newsCard, isRtl && styles.rowReverse]}
                       activeOpacity={0.7}
                       onPress={() => openDetails(item)}
                     >
@@ -269,19 +285,25 @@ export default function NewsScreen({ route }: NewsScreenProps) {
                           )}
                         </View>
 
-                        <Text style={styles.newsTitle} numberOfLines={2}>
+                        <Text
+                          style={[styles.newsTitle, isRtl && styles.textRight]}
+                          numberOfLines={2}
+                        >
                           {item.title}
                         </Text>
 
-                        <Text style={styles.newsExcerpt} numberOfLines={2}>
+                        <Text
+                          style={[styles.newsExcerpt, isRtl && styles.textRight]}
+                          numberOfLines={2}
+                        >
                           {getExcerpt(item.content, 140)}
                         </Text>
 
                         <View style={styles.newsFooter}>
-                          <View style={styles.newsDate}>
+                          <View style={[styles.newsDate, isRtl && styles.rowReverse]}>
                             <Calendar color="#D1D5DB" size={11} />
                             <Text style={styles.newsDateText}>
-                              {item.formatted_date || 'No date'}
+                              {item.formatted_date || t('common.noDate')}
                             </Text>
                           </View>
 
@@ -296,9 +318,9 @@ export default function NewsScreen({ route }: NewsScreenProps) {
                   ))
                 ) : (
                   <View style={styles.emptyBox}>
-                    <Text style={styles.emptyTitle}>No additional news</Text>
+                    <Text style={styles.emptyTitle}>{t('news.noAdditional')}</Text>
                     <Text style={styles.emptyText}>
-                      There are no more public news items to display right now.
+                      {t('news.noAdditionalText')}
                     </Text>
                   </View>
                 )}
@@ -321,7 +343,7 @@ export default function NewsScreen({ route }: NewsScreenProps) {
                         currentPage === 1 && styles.paginationButtonTextDisabled,
                       ]}
                     >
-                      Previous
+                      {t('news.previous')}
                     </Text>
                   </TouchableOpacity>
 
@@ -345,7 +367,7 @@ export default function NewsScreen({ route }: NewsScreenProps) {
                           styles.paginationButtonTextDisabled,
                       ]}
                     >
-                      Next
+                      {t('news.next')}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -369,8 +391,12 @@ export default function NewsScreen({ route }: NewsScreenProps) {
 
             {selectedNews && (
               <>
-                <Text style={styles.modalTitle}>{selectedNews.title}</Text>
-                <Text style={styles.modalSubtitle}>Full news details</Text>
+                <Text style={[styles.modalTitle, isRtl && styles.textRight]}>
+                  {selectedNews.title}
+                </Text>
+                <Text style={[styles.modalSubtitle, isRtl && styles.textRight]}>
+                  {t('news.fullDetails')}
+                </Text>
 
                 <View style={styles.modalStatusBadge}>
                   <Text style={styles.modalStatusBadgeText}>
@@ -382,7 +408,7 @@ export default function NewsScreen({ route }: NewsScreenProps) {
                   <View style={styles.modalMetaItem}>
                     <Calendar size={14} color="#6B7280" />
                     <Text style={styles.modalMetaText}>
-                      {selectedNews.formatted_date || 'No date'}
+                      {selectedNews.formatted_date || t('common.noDate')}
                     </Text>
                   </View>
 
@@ -396,35 +422,45 @@ export default function NewsScreen({ route }: NewsScreenProps) {
 
                 <View style={styles.detailsGrid}>
                   <View style={styles.detailBox}>
-                    <Text style={styles.detailLabel}>Published At</Text>
+                    <Text style={[styles.detailLabel, isRtl && styles.textRight]}>
+                      {t('news.publishedAt')}
+                    </Text>
                     <Text style={styles.detailValue}>
                       {formatDateTime(selectedNews.published_at)}
                     </Text>
                   </View>
 
                   <View style={styles.detailBox}>
-                    <Text style={styles.detailLabel}>Expiry Date</Text>
+                    <Text style={[styles.detailLabel, isRtl && styles.textRight]}>
+                      {t('news.expiryDate')}
+                    </Text>
                     <Text style={styles.detailValue}>
                       {formatDateTime(selectedNews.expires_at)}
                     </Text>
                   </View>
 
                   <View style={styles.detailBox}>
-                    <Text style={styles.detailLabel}>Remaining</Text>
+                    <Text style={[styles.detailLabel, isRtl && styles.textRight]}>
+                      {t('news.remaining')}
+                    </Text>
                     <Text style={styles.detailValue}>
                       {getRemainingDaysText(selectedNews.remaining_days) ||
-                        'No expiry'}
+                        t('news.noExpiry')}
                     </Text>
                   </View>
 
                   <View style={styles.detailBox}>
-                    <Text style={styles.detailLabel}>Current Status</Text>
+                    <Text style={[styles.detailLabel, isRtl && styles.textRight]}>
+                      {t('news.currentStatus')}
+                    </Text>
                     <Text style={styles.detailValue}>{selectedNews.status}</Text>
                   </View>
                 </View>
 
                 <View style={styles.fullContentBox}>
-                  <Text style={styles.fullContentText}>{selectedNews.content}</Text>
+                  <Text style={[styles.fullContentText, isRtl && styles.textRight]}>
+                    {selectedNews.content}
+                  </Text>
                 </View>
               </>
             )}
@@ -840,5 +876,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#374151',
     lineHeight: 24,
+  },
+  rowReverse: {
+    flexDirection: 'row-reverse',
+  },
+  textRight: {
+    textAlign: 'right',
   },
 });

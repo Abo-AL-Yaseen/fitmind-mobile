@@ -29,18 +29,23 @@ import {
   type NotificationData,
 } from '../services/userNotifications';
 import { routeNotificationData } from '../services/notifications';
+import { useTranslation } from '../i18n';
 
 const EMPTY_NOTIFICATIONS: UserNotification[] = [];
 
-function formatNotificationTime(value: string | null) {
-  if (!value) return 'Just now';
+function formatNotificationTime(
+  value: string | null,
+  locale: string | undefined,
+  justNow: string
+) {
+  if (!value) return justNow;
 
   const normalized = value.includes('T') ? value : value.replace(' ', 'T');
   const date = new Date(normalized);
 
   if (Number.isNaN(date.getTime())) return value;
 
-  return date.toLocaleString();
+  return date.toLocaleString(locale);
 }
 
 function buildRouteData(notification: UserNotification): NotificationData {
@@ -55,6 +60,7 @@ function buildRouteData(notification: UserNotification): NotificationData {
 }
 
 export default function NotificationsScreen() {
+  const { t, isRtl, language } = useTranslation();
   const notificationsQuery = useNotificationsQuery();
   const refetchNotificationsRef = useRef(notificationsQuery.refetch);
   const {
@@ -113,7 +119,7 @@ export default function NotificationsScreen() {
       try {
         await markNotificationAsReadAsync(notification.id);
       } catch (error: any) {
-        setErrorMessage(error?.message || 'Failed to mark notification as read.');
+        setErrorMessage(error?.message || t('notifications.failedMarkOne'));
       }
     }
 
@@ -127,7 +133,7 @@ export default function NotificationsScreen() {
       setErrorMessage('');
       await markAllNotificationsAsReadAsync();
     } catch (error: any) {
-      setErrorMessage(error?.message || 'Failed to mark all notifications as read.');
+      setErrorMessage(error?.message || t('notifications.failedMarkAll'));
     }
   };
 
@@ -135,7 +141,7 @@ export default function NotificationsScreen() {
     return (
       <View style={styles.centerState}>
         <ActivityIndicator size="large" color="#0D7D6D" />
-        <Text style={styles.centerText}>Loading notifications...</Text>
+        <Text style={styles.centerText}>{t('notifications.loading')}</Text>
       </View>
     );
   }
@@ -144,15 +150,17 @@ export default function NotificationsScreen() {
     return (
       <View style={styles.centerState}>
         <CircleAlert color="#DC2626" size={32} />
-        <Text style={styles.centerTitle}>Could not load notifications</Text>
+        <Text style={styles.centerTitle}>
+          {t('notifications.loadFailedTitle')}
+        </Text>
         <Text style={styles.centerText}>
           {error instanceof Error
             ? error.message
-            : 'Please try again.'}
+            : t('notifications.tryAgainFallback')}
         </Text>
         <TouchableOpacity style={styles.retryButton} onPress={handleRefresh}>
           <RefreshCw color="#FFFFFF" size={16} />
-          <Text style={styles.retryButtonText}>Try Again</Text>
+          <Text style={styles.retryButtonText}>{t('common.tryAgain')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -173,17 +181,22 @@ export default function NotificationsScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
+        <View style={[styles.header, isRtl && styles.rowReverse]}>
           <View style={styles.headerIcon}>
             <BellRing color="#FFFFFF" size={22} />
           </View>
 
           <View style={styles.headerTextWrap}>
-            <Text style={styles.headerTitle}>Notifications</Text>
-            <Text style={styles.headerSubtitle}>
+            <Text style={[styles.headerTitle, isRtl && styles.textRight]}>
+              {t('notifications.title')}
+            </Text>
+            <Text style={[styles.headerSubtitle, isRtl && styles.textRight]}>
               {unreadCount
-                ? `${unreadCount} unread update${unreadCount === 1 ? '' : 's'}`
-                : 'All caught up'}
+                ? t('notifications.unread', {
+                    count: unreadCount,
+                    plural: unreadCount === 1 ? '' : 's',
+                  })
+                : t('notifications.allCaughtUp')}
             </Text>
           </View>
 
@@ -201,7 +214,7 @@ export default function NotificationsScreen() {
             ) : (
               <CheckCheck color="#0D7D6D" size={16} />
             )}
-            <Text style={styles.markAllText}>Read all</Text>
+            <Text style={styles.markAllText}>{t('notifications.readAll')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -214,9 +227,9 @@ export default function NotificationsScreen() {
         {notifications.length === 0 ? (
           <View style={styles.emptyCard}>
             <Bell color="#0D7D6D" size={34} />
-            <Text style={styles.emptyTitle}>No notifications yet</Text>
+            <Text style={styles.emptyTitle}>{t('notifications.emptyTitle')}</Text>
             <Text style={styles.emptyText}>
-              Important updates from your gym will appear here.
+              {t('notifications.emptyText')}
             </Text>
           </View>
         ) : (
@@ -231,7 +244,7 @@ export default function NotificationsScreen() {
                   activeOpacity={0.82}
                   onPress={() => handleNotificationPress(notification)}
                 >
-                  <View style={styles.cardTopRow}>
+                  <View style={[styles.cardTopRow, isRtl && styles.rowReverse]}>
                     <View
                       style={[
                         styles.cardIcon,
@@ -245,11 +258,12 @@ export default function NotificationsScreen() {
                     </View>
 
                     <View style={styles.cardTextWrap}>
-                      <View style={styles.titleRow}>
+                      <View style={[styles.titleRow, isRtl && styles.rowReverse]}>
                         <Text
                           style={[
                             styles.notificationTitle,
                             unread && styles.notificationTitleUnread,
+                            isRtl && styles.textRight,
                           ]}
                           numberOfLines={2}
                         >
@@ -260,7 +274,13 @@ export default function NotificationsScreen() {
                       </View>
 
                       {!!notification.body && (
-                        <Text style={styles.notificationBody} numberOfLines={3}>
+                        <Text
+                          style={[
+                            styles.notificationBody,
+                            isRtl && styles.textRight,
+                          ]}
+                          numberOfLines={3}
+                        >
                           {notification.body}
                         </Text>
                       )}
@@ -268,10 +288,14 @@ export default function NotificationsScreen() {
                   </View>
 
                   <View style={styles.metaRow}>
-                    <View style={styles.timeRow}>
+                    <View style={[styles.timeRow, isRtl && styles.rowReverse]}>
                       <Clock color="#9CA3AF" size={13} />
                       <Text style={styles.timeText}>
-                        {formatNotificationTime(notification.created_at)}
+                        {formatNotificationTime(
+                          notification.created_at,
+                          language === 'ar' ? 'ar' : undefined,
+                          t('notifications.justNow')
+                        )}
                       </Text>
                     </View>
 
@@ -281,7 +305,9 @@ export default function NotificationsScreen() {
                         unread && styles.unreadStateText,
                       ]}
                     >
-                      {unread ? 'Unread' : 'Read'}
+                      {unread
+                        ? t('notifications.unreadState')
+                        : t('notifications.readState')}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -524,5 +550,11 @@ const styles = StyleSheet.create({
   },
   unreadStateText: {
     color: '#0D7D6D',
+  },
+  rowReverse: {
+    flexDirection: 'row-reverse',
+  },
+  textRight: {
+    textAlign: 'right',
   },
 });

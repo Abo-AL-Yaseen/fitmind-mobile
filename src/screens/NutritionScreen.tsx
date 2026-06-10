@@ -36,6 +36,7 @@ import {
 import { useLatestNutritionPlanQuery } from '../hooks/nutrition/queries/useLatestNutritionPlanQuery';
 import { useGenerateNutritionPlanMutation } from '../hooks/nutrition/mutations/useGenerateNutritionPlanMutation';
 import { useModifyNutritionPlanMutation } from '../hooks/nutrition/mutations/useModifyNutritionPlanMutation';
+import { useTranslation } from '../i18n';
 
 type MealGroup = {
   key: string;
@@ -204,6 +205,7 @@ function groupFoodsByMeal(items: NutritionMealItem[]): MealGroup[] {
 }
 
 export default function NutritionScreen() {
+  const { t, isRtl } = useTranslation();
   const {
     data: activePlan = null,
     isLoading,
@@ -259,9 +261,13 @@ export default function NutritionScreen() {
 
   useEffect(() => {
     if (isError) {
-      showAppAlert('Load Failed', prettifyApiError((error as Error)?.message), 'error');
+      showAppAlert(
+        t('nutrition.loadFailed'),
+        prettifyApiError((error as Error)?.message),
+        'error'
+      );
     }
-  }, [isError, error]);
+  }, [isError, error, t]);
 
   useEffect(() => {
     if (!mealGroups.length) {
@@ -319,21 +325,21 @@ export default function NutritionScreen() {
 
   const macros = [
     {
-      label: 'Protein',
+      label: t('nutrition.protein'),
       value: Math.round(totals.protein),
       target: Math.round(activePlan?.total_daily.protein ?? 0),
       color: '#3B82F6',
       unit: 'g',
     },
     {
-      label: 'Carbs',
+      label: t('nutrition.carbs'),
       value: Math.round(totals.carbs),
       target: Math.round(activePlan?.total_daily.carbs ?? 0),
       color: '#FBBF24',
       unit: 'g',
     },
     {
-      label: 'Fat',
+      label: t('nutrition.fat'),
       value: Math.round(totals.fat),
       target: Math.round(activePlan?.total_daily.fat ?? 0),
       color: '#FB7185',
@@ -350,13 +356,12 @@ export default function NutritionScreen() {
       const response = await generateMutation.mutateAsync();
 
       showAppAlert(
-        'Plan Request Sent',
-        response?.message ||
-          'Your nutrition plan was sent for generation and is waiting for coach approval.',
+        t('nutrition.planRequestSent'),
+        response?.message || t('nutrition.planRequestText'),
         'success'
       );
     } catch (error: any) {
-      showAppAlert('Generate Failed', prettifyApiError(error?.message), 'error');
+      showAppAlert(t('nutrition.generateFailed'), prettifyApiError(error?.message), 'error');
     }
   };
 
@@ -376,7 +381,7 @@ export default function NutritionScreen() {
 
   const handleSubmitModification = async () => {
     if (!activePlan?.version_id) {
-      showAppAlert('No Plan', 'There is no accepted nutrition plan to modify right now.', 'info');
+      showAppAlert(t('nutrition.noPlan'), t('nutrition.noPlanModify'), 'info');
       return;
     }
 
@@ -405,7 +410,7 @@ export default function NutritionScreen() {
         'success'
       );
     } catch (error: any) {
-      showAppAlert('Modify Failed', prettifyApiError(error?.message), 'error');
+      showAppAlert(t('nutrition.modifyFailed'), prettifyApiError(error?.message), 'error');
     }
   };
 
@@ -413,7 +418,7 @@ export default function NutritionScreen() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#0D7D6D" />
-        <Text style={styles.loadingText}>Loading your nutrition plan...</Text>
+        <Text style={styles.loadingText}>{t('nutrition.loading')}</Text>
       </View>
     );
   }
@@ -442,13 +447,15 @@ export default function NutritionScreen() {
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
           <View style={styles.header}>
-            <View style={styles.headerTopRow}>
+            <View style={[styles.headerTopRow, isRtl && styles.rowReverse]}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.headerTitle}>Smart Nutrition</Text>
-                <Text style={styles.headerSubtitle}>
+                <Text style={[styles.headerTitle, isRtl && styles.textRight]}>
+                  {t('nutrition.smartTitle')}
+                </Text>
+                <Text style={[styles.headerSubtitle, isRtl && styles.textRight]}>
                   {activePlan
-                    ? `${activePlan.name} • ${activePlan.goal_type ?? 'Nutrition Plan'}`
-                    : 'No approved nutrition plan yet'}
+                    ? `${activePlan.name} • ${activePlan.goal_type ?? t('nutrition.planFallback')}`
+                    : t('nutrition.noApproved')}
                 </Text>
               </View>
 
@@ -466,18 +473,20 @@ export default function NutritionScreen() {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.headerMetaRow}>
+            <View style={[styles.headerMetaRow, isRtl && styles.rowReverse]}>
               <View style={styles.headerMetaBadge}>
                 <Text style={styles.headerMetaText}>
-                  Status: {activePlan?.active ?? 'No active plan'}
+                  {t('nutrition.status')}: {activePlan?.active ?? t('nutrition.noActivePlan')}
                 </Text>
               </View>
               <View style={styles.headerMetaBadge}>
-                <Text style={styles.headerMetaText}>Meals: {mealGroups.length}</Text>
+                <Text style={styles.headerMetaText}>
+                  {t('nutrition.meals')}: {mealGroups.length}
+                </Text>
               </View>
             </View>
 
-            <View style={styles.headerActions}>
+            <View style={[styles.headerActions, isRtl && styles.rowReverse]}>
               <TouchableOpacity
                 style={[styles.primaryActionButton, generateLoading && styles.buttonDisabled]}
                 activeOpacity={0.85}
@@ -489,7 +498,7 @@ export default function NutritionScreen() {
                 ) : (
                   <>
                     <Wand2 color="#FFFFFF" size={16} />
-                    <Text style={styles.primaryActionText}>Generate Plan</Text>
+                    <Text style={styles.primaryActionText}>{t('nutrition.generatePlan')}</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -508,7 +517,7 @@ export default function NutritionScreen() {
                 ) : (
                   <>
                     <Settings2 color="#0D7D6D" size={16} />
-                    <Text style={styles.secondaryActionText}>Modify Plan</Text>
+                    <Text style={styles.secondaryActionText}>{t('nutrition.modifyPlan')}</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -516,7 +525,7 @@ export default function NutritionScreen() {
           </View>
 
           <View style={styles.card}>
-            <View style={styles.calorieRow}>
+            <View style={[styles.calorieRow, isRtl && styles.rowReverse]}>
               <View style={styles.ringContainer}>
                 <View style={styles.ring}>
                   <Text style={styles.ringPercent}>{calPercent}%</Text>
@@ -524,10 +533,14 @@ export default function NutritionScreen() {
               </View>
 
               <View style={styles.calorieInfo}>
-                <Text style={styles.calorieLabel}>Daily Calories</Text>
+                <Text style={[styles.calorieLabel, isRtl && styles.textRight]}>
+                  {t('nutrition.dailyCalories')}
+                </Text>
                 <Text style={styles.calorieValue}>{Math.round(totals.calories)}</Text>
                 <Text style={styles.calorieTarget}>
-                  of {Math.round(activePlan?.total_daily.calories ?? 0)} kcal
+                  {t('nutrition.ofKcal', {
+                    value: Math.round(activePlan?.total_daily.calories ?? 0),
+                  })}
                 </Text>
               </View>
             </View>
@@ -564,21 +577,20 @@ export default function NutritionScreen() {
           </View>
 
           <AITipCard
-            title="AI Nutrition Tip"
+            title={t('nutrition.tipTitle')}
             text={
               activePlan
-                ? 'Tap any food card to view full nutrition details. Use Modify Plan to ask the AI for goal changes, disliked foods, or safer food alternatives.'
-                : 'You do not have an accepted nutrition plan yet. Start by generating a new nutrition plan.'
+                ? t('nutrition.tipActive')
+                : t('nutrition.tipInactive')
             }
           />
 
           {!activePlan || mealGroups.length === 0 ? (
             <View style={styles.emptyCard}>
               <Apple color="#0D7D6D" size={28} />
-              <Text style={styles.emptyTitle}>No approved nutrition plan yet</Text>
+              <Text style={styles.emptyTitle}>{t('nutrition.emptyTitle')}</Text>
               <Text style={styles.emptyText}>
-                Generate a nutrition plan first. After coach approval, your latest accepted
-                nutrition plan will appear here automatically.
+                {t('nutrition.emptyText')}
               </Text>
             </View>
           ) : (
@@ -626,15 +638,18 @@ export default function NutritionScreen() {
                       {meal.items.map((item) => (
                         <TouchableOpacity
                           key={item.id}
-                          style={styles.foodCard}
+                          style={[styles.foodCard, isRtl && styles.rowReverse]}
                           activeOpacity={0.85}
                           onPress={() => setSelectedFood(item)}
                         >
                           <Text style={styles.foodEmoji}>🍽️</Text>
 
                           <View style={styles.foodContent}>
-                            <View style={styles.foodHeader}>
-                              <Text style={styles.foodName} numberOfLines={2}>
+                            <View style={[styles.foodHeader, isRtl && styles.rowReverse]}>
+                              <Text
+                                style={[styles.foodName, isRtl && styles.textRight]}
+                                numberOfLines={2}
+                              >
                                 {getItemName(item)}
                               </Text>
 
@@ -681,17 +696,17 @@ export default function NutritionScreen() {
           >
             {selectedFood && (
               <>
-                <View style={styles.foodModalHeader}>
+                <View style={[styles.foodModalHeader, isRtl && styles.rowReverse]}>
                   <View style={styles.foodModalIconWrap}>
                     <Apple color="#0D7D6D" size={18} />
                   </View>
 
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.foodModalTitle}>
+                    <Text style={[styles.foodModalTitle, isRtl && styles.textRight]}>
                       {getItemName(selectedFood)}
                     </Text>
-                    <Text style={styles.foodModalSubtitle}>
-                      Meal: {selectedFood.meal_type}
+                    <Text style={[styles.foodModalSubtitle, isRtl && styles.textRight]}>
+                      {t('nutrition.meal')}: {selectedFood.meal_type}
                     </Text>
                   </View>
 
@@ -701,32 +716,32 @@ export default function NutritionScreen() {
                 </View>
 
                 <View style={styles.foodInfoBox}>
-                  <View style={styles.foodInfoRow}>
-                    <Text style={styles.foodInfoLabel}>Calories</Text>
+                  <View style={[styles.foodInfoRow, isRtl && styles.rowReverse]}>
+                    <Text style={styles.foodInfoLabel}>{t('nutrition.calories')}</Text>
                     <Text style={styles.foodInfoValue}>
                       {Math.round(getItemCalories(selectedFood))} kcal
                     </Text>
                   </View>
-                  <View style={styles.foodInfoRow}>
-                    <Text style={styles.foodInfoLabel}>Protein</Text>
+                  <View style={[styles.foodInfoRow, isRtl && styles.rowReverse]}>
+                    <Text style={styles.foodInfoLabel}>{t('nutrition.protein')}</Text>
                     <Text style={styles.foodInfoValue}>
                       {Math.round(getItemProtein(selectedFood))} g
                     </Text>
                   </View>
-                  <View style={styles.foodInfoRow}>
-                    <Text style={styles.foodInfoLabel}>Carbs</Text>
+                  <View style={[styles.foodInfoRow, isRtl && styles.rowReverse]}>
+                    <Text style={styles.foodInfoLabel}>{t('nutrition.carbs')}</Text>
                     <Text style={styles.foodInfoValue}>
                       {Math.round(getItemCarbs(selectedFood))} g
                     </Text>
                   </View>
-                  <View style={styles.foodInfoRow}>
-                    <Text style={styles.foodInfoLabel}>Fat</Text>
+                  <View style={[styles.foodInfoRow, isRtl && styles.rowReverse]}>
+                    <Text style={styles.foodInfoLabel}>{t('nutrition.fat')}</Text>
                     <Text style={styles.foodInfoValue}>
                       {Math.round(getItemFat(selectedFood))} g
                     </Text>
                   </View>
-                  <View style={styles.foodInfoRow}>
-                    <Text style={styles.foodInfoLabel}>Quantity</Text>
+                  <View style={[styles.foodInfoRow, isRtl && styles.rowReverse]}>
+                    <Text style={styles.foodInfoLabel}>{t('nutrition.quantity')}</Text>
                     <Text style={styles.foodInfoValue}>{String(selectedFood.quantity ?? '1')}</Text>
                   </View>
                 </View>
@@ -762,9 +777,11 @@ export default function NutritionScreen() {
           >
             <View style={styles.modifyHeader}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.modifyTitle}>Modify Nutrition Plan</Text>
-                <Text style={styles.modifySubtitle}>
-                  Tell the AI what should change in your current approved nutrition plan
+                <Text style={[styles.modifyTitle, isRtl && styles.textRight]}>
+                  {t('nutrition.modifyTitle')}
+                </Text>
+                <Text style={[styles.modifySubtitle, isRtl && styles.textRight]}>
+                  {t('nutrition.modifySubtitle')}
                 </Text>
               </View>
 
@@ -775,19 +792,22 @@ export default function NutritionScreen() {
 
             <ScrollView showsVerticalScrollIndicator={false}>
               <View style={styles.modifyIntroCard}>
-                <Text style={styles.modifyIntroTitle}>Request Payload Preview</Text>
+                <Text style={[styles.modifyIntroTitle, isRtl && styles.textRight]}>
+                  {t('nutrition.payloadPreview')}
+                </Text>
                 <Text style={styles.modifyIntroText}>
                   current_plan_id: {activePlan?.version_id ?? 'N/A'}
                 </Text>
                 <Text style={styles.modifyIntroText}>
-                  This request will send your selected goal, disliked foods, liked foods,
-                  and your written nutrition notes.
+                  {t('nutrition.payloadText')}
                 </Text>
               </View>
 
-              <Text style={styles.fieldLabel}>1. Goal Adjustment</Text>
-              <Text style={styles.fieldHelper}>
-                Choose how the AI should adjust your nutrition plan.
+              <Text style={[styles.fieldLabel, isRtl && styles.textRight]}>
+                {t('nutrition.goalAdjustment')}
+              </Text>
+              <Text style={[styles.fieldHelper, isRtl && styles.textRight]}>
+                {t('nutrition.goalAdjustmentHelp')}
               </Text>
 
               <View style={styles.difficultyList}>
@@ -818,9 +838,11 @@ export default function NutritionScreen() {
                 })}
               </View>
 
-              <Text style={styles.fieldLabel}>2. Foods You Want Changed</Text>
-              <Text style={styles.fieldHelper}>
-                Tap the foods you want the AI to replace or avoid.
+              <Text style={[styles.fieldLabel, isRtl && styles.textRight]}>
+                {t('nutrition.dislikedFoods')}
+              </Text>
+              <Text style={[styles.fieldHelper, isRtl && styles.textRight]}>
+                {t('nutrition.dislikedFoodsHelp')}
               </Text>
 
               <View style={styles.chipsWrap}>
@@ -848,25 +870,27 @@ export default function NutritionScreen() {
                     );
                   })
                 ) : (
-                  <Text style={styles.helperText}>No current foods found.</Text>
+                  <Text style={styles.helperText}>{t('nutrition.noCurrentFoods')}</Text>
                 )}
               </View>
 
-              <Text style={styles.fieldLabel}>3. Modification Notes</Text>
-              <Text style={styles.fieldHelper}>
-                Write exactly what you want, like more protein, avoid seafood, easier meals, or different food choices.
+              <Text style={[styles.fieldLabel, isRtl && styles.textRight]}>
+                {t('nutrition.modificationNotes')}
+              </Text>
+              <Text style={[styles.fieldHelper, isRtl && styles.textRight]}>
+                {t('nutrition.modificationNotesHelp')}
               </Text>
 
               <View style={styles.requestBox}>
                 <View style={styles.requestHeader}>
                   <MessageSquareText color="#0D7D6D" size={16} />
-                  <Text style={styles.requestHeaderText}>Your Request</Text>
+                  <Text style={styles.requestHeaderText}>{t('nutrition.yourRequest')}</Text>
                 </View>
 
                 <TextInput
                   value={notes}
                   onChangeText={setNotes}
-                  placeholder="Example: Need more protein, keep fats moderate, and avoid all seafood."
+                  placeholder={t('nutrition.notesPlaceholder')}
                   placeholderTextColor="#9CA3AF"
                   multiline
                   textAlignVertical="top"
@@ -875,7 +899,7 @@ export default function NutritionScreen() {
               </View>
 
               <View style={styles.summaryBox}>
-                <Text style={styles.summaryTitle}>Final Payload Summary</Text>
+                <Text style={styles.summaryTitle}>{t('nutrition.finalPayload')}</Text>
                 <Text style={styles.summaryText}>
                   • current_plan_id: {activePlan?.version_id ?? 'N/A'}
                 </Text>
@@ -897,7 +921,7 @@ export default function NutritionScreen() {
                 {modifyLoading ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.submitButtonText}>Submit Modification</Text>
+                  <Text style={styles.submitButtonText}>{t('nutrition.submitModification')}</Text>
                 )}
               </TouchableOpacity>
             </ScrollView>
@@ -1578,5 +1602,11 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '800',
+  },
+  rowReverse: {
+    flexDirection: 'row-reverse',
+  },
+  textRight: {
+    textAlign: 'right',
   },
 });

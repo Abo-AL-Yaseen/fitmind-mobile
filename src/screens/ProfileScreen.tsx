@@ -23,6 +23,7 @@ import {
 import type { ProfilePayload } from '../services/profile';
 import { useMyProfileQuery } from '../hooks/profile/queries/useMyProfileQuery';
 import { useSaveMyProfileMutation } from '../hooks/profile/mutations/useSaveMyProfileMutation';
+import { useTranslation } from '../i18n';
 
 type FormState = {
   age: string;
@@ -57,6 +58,7 @@ const genderOptions = ['male', 'female'];
 const activityOptions = ['low', 'moderate', 'high'];
 
 export default function ProfileScreen({ navigation }: any) {
+  const { t, isRtl } = useTranslation();
   const [formData, setFormData] = useState<FormState>(initialFormData);
 
   const [toast, setToast] = useState<ToastState>({
@@ -114,15 +116,15 @@ export default function ProfileScreen({ navigation }: any) {
         'Error',
         error instanceof Error
           ? error.message
-          : 'Failed to load profile information.'
+          : t('profile.loadFailed')
       );
     }
-  }, [error]);
+  }, [error, t]);
 
   const saveButtonLabel = useMemo(() => {
-    if (isSaving) return 'Saving...';
-    return profileExists ? 'Update Profile' : 'Create Profile';
-  }, [isSaving, profileExists]);
+    if (isSaving) return t('common.saving');
+    return profileExists ? t('profile.updateProfile') : t('profile.createProfile');
+  }, [isSaving, profileExists, t]);
 
   const showToast = (
     type: 'success' | 'error',
@@ -207,17 +209,17 @@ export default function ProfileScreen({ navigation }: any) {
 
   const validateForm = () => {
     if (!formData.age.trim()) {
-      showToast('error', 'Missing field', 'Please enter your age.');
+      showToast('error', t('common.missingField'), t('profile.enterAge'));
       return false;
     }
 
     if (!formData.height.trim()) {
-      showToast('error', 'Missing field', 'Please enter your height.');
+      showToast('error', t('common.missingField'), t('profile.enterHeight'));
       return false;
     }
 
     if (!formData.weight.trim()) {
-      showToast('error', 'Missing field', 'Please enter your weight.');
+      showToast('error', t('common.missingField'), t('profile.enterWeight'));
       return false;
     }
 
@@ -232,17 +234,15 @@ export default function ProfileScreen({ navigation }: any) {
 
       showToast(
         'success',
-        'Saved successfully',
-        profileExists
-          ? 'Your profile has been updated successfully.'
-          : 'Your profile has been created successfully.',
+        t('common.savedSuccessfully'),
+        profileExists ? t('profile.updated') : t('profile.created'),
         true
       );
     } catch (error: any) {
       showToast(
         'error',
-        'Save failed',
-        error?.message || 'Failed to save profile.'
+        t('common.saveFailed'),
+        error?.message || t('profile.saveFailed')
       );
     }
   };
@@ -252,7 +252,7 @@ export default function ProfileScreen({ navigation }: any) {
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#0D7D6D" />
-          <Text style={styles.loadingText}>Loading profile...</Text>
+          <Text style={styles.loadingText}>{t('profile.loading')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -263,7 +263,7 @@ export default function ProfileScreen({ navigation }: any) {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <View style={styles.container}>
-        <View style={styles.header}>
+        <View style={[styles.header, isRtl && styles.rowReverse]}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
             style={styles.backButton}
@@ -273,9 +273,11 @@ export default function ProfileScreen({ navigation }: any) {
           </TouchableOpacity>
 
           <View style={styles.headerContent}>
-            <Text style={styles.headerTitle}>My Profile</Text>
-            <Text style={styles.headerSubtitle}>
-              Manage your personal information
+            <Text style={[styles.headerTitle, isRtl && styles.textRight]}>
+              {t('profile.title')}
+            </Text>
+            <Text style={[styles.headerSubtitle, isRtl && styles.textRight]}>
+              {t('profile.subtitle')}
             </Text>
           </View>
         </View>
@@ -287,35 +289,43 @@ export default function ProfileScreen({ navigation }: any) {
         >
           {showMissingProfileMessage && (
             <View style={styles.warningBox}>
-              <Text style={styles.warningTitle}>Profile not completed</Text>
-              <Text style={styles.warningText}>
-                Please fill in your profile information to complete your account.
+              <Text style={[styles.warningTitle, isRtl && styles.textRight]}>
+                {t('profile.notCompleted')}
+              </Text>
+              <Text style={[styles.warningText, isRtl && styles.textRight]}>
+                {t('profile.notCompletedText')}
               </Text>
             </View>
           )}
 
           <View style={styles.card}>
-            <View style={styles.sectionHeader}>
+            <View style={[styles.sectionHeader, isRtl && styles.rowReverse]}>
               <View style={styles.sectionIcon}>
                 <User color="#0D7D6D" size={16} />
               </View>
-              <Text style={styles.sectionTitle}>Basic Information</Text>
+              <Text style={[styles.sectionTitle, isRtl && styles.textRight]}>
+                {t('profile.basicInfo')}
+              </Text>
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Age</Text>
+              <Text style={[styles.label, isRtl && styles.textRight]}>
+                {t('profile.age')}
+              </Text>
               <TextInput
                 value={formData.age}
                 onChangeText={(text) => updateField('age', text)}
                 keyboardType="numeric"
-                placeholder="Enter your age"
-                style={styles.input}
+                placeholder={t('profile.enterAge')}
+                style={[styles.input, isRtl && styles.textRight]}
               />
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Gender</Text>
-              <View style={styles.optionsRow}>
+              <Text style={[styles.label, isRtl && styles.textRight]}>
+                {t('profile.gender')}
+              </Text>
+              <View style={[styles.optionsRow, isRtl && styles.rowReverse]}>
                 {genderOptions.map((option) => {
                   const isActive = formData.gender === option;
 
@@ -335,7 +345,7 @@ export default function ProfileScreen({ navigation }: any) {
                           isActive && styles.optionChipTextActive,
                         ]}
                       >
-                        {option.charAt(0).toUpperCase() + option.slice(1)}
+                        {t(`profile.${option}`)}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -343,42 +353,50 @@ export default function ProfileScreen({ navigation }: any) {
               </View>
             </View>
 
-            <View style={styles.row}>
+            <View style={[styles.row, isRtl && styles.rowReverse]}>
               <View style={[styles.formGroup, styles.halfWidth]}>
-                <Text style={styles.label}>Height (cm)</Text>
+                <Text style={[styles.label, isRtl && styles.textRight]}>
+                  {t('profile.heightCm')}
+                </Text>
                 <TextInput
                   value={formData.height}
                   onChangeText={(text) => updateField('height', text)}
                   keyboardType="numeric"
                   placeholder="175"
-                  style={styles.input}
+                  style={[styles.input, isRtl && styles.textRight]}
                 />
               </View>
 
               <View style={[styles.formGroup, styles.halfWidth]}>
-                <Text style={styles.label}>Weight (kg)</Text>
+                <Text style={[styles.label, isRtl && styles.textRight]}>
+                  {t('profile.weightKg')}
+                </Text>
                 <TextInput
                   value={formData.weight}
                   onChangeText={(text) => updateField('weight', text)}
                   keyboardType="numeric"
                   placeholder="70"
-                  style={styles.input}
+                  style={[styles.input, isRtl && styles.textRight]}
                 />
               </View>
             </View>
           </View>
 
           <View style={styles.card}>
-            <View style={styles.sectionHeader}>
+            <View style={[styles.sectionHeader, isRtl && styles.rowReverse]}>
               <View style={styles.sectionIcon}>
                 <Activity color="#0D7D6D" size={16} />
               </View>
-              <Text style={styles.sectionTitle}>Lifestyle</Text>
+              <Text style={[styles.sectionTitle, isRtl && styles.textRight]}>
+                {t('profile.lifestyle')}
+              </Text>
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Activity Level</Text>
-              <View style={styles.optionsRow}>
+              <Text style={[styles.label, isRtl && styles.textRight]}>
+                {t('profile.activityLevel')}
+              </Text>
+              <View style={[styles.optionsRow, isRtl && styles.rowReverse]}>
                 {activityOptions.map((option) => {
                   const isActive = formData.activityLevel === option;
 
@@ -398,7 +416,7 @@ export default function ProfileScreen({ navigation }: any) {
                           isActive && styles.optionChipTextActive,
                         ]}
                       >
-                        {option.charAt(0).toUpperCase() + option.slice(1)}
+                        {t(`profile.activity.${option}`)}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -407,61 +425,69 @@ export default function ProfileScreen({ navigation }: any) {
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Preferences</Text>
+              <Text style={[styles.label, isRtl && styles.textRight]}>
+                {t('profile.preferences')}
+              </Text>
               <TextInput
                 value={formData.preferences}
                 onChangeText={(text) => updateField('preferences', text)}
-                placeholder="e.g., Strength training, Running, Yoga"
+                placeholder={t('profile.preferencesPlaceholder')}
                 multiline
                 numberOfLines={3}
-                style={[styles.input, styles.textarea]}
+                style={[styles.input, styles.textarea, isRtl && styles.textRight]}
               />
-              <Text style={styles.hint}>
-                Share your fitness interests and goals
+              <Text style={[styles.hint, isRtl && styles.textRight]}>
+                {t('profile.preferencesHint')}
               </Text>
             </View>
           </View>
 
           <View style={styles.card}>
-            <View style={styles.sectionHeader}>
+            <View style={[styles.sectionHeader, isRtl && styles.rowReverse]}>
               <View style={styles.sectionIcon}>
                 <Heart color="#0D7D6D" size={16} />
               </View>
-              <Text style={styles.sectionTitle}>Health Information</Text>
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Food Allergies</Text>
-              <TextInput
-                value={formData.foodAllergies}
-                onChangeText={(text) => updateField('foodAllergies', text)}
-                placeholder="e.g., Peanuts, Shellfish, or None"
-                multiline
-                numberOfLines={3}
-                style={[styles.input, styles.textarea]}
-              />
-              <Text style={styles.hint}>
-                List any food allergies or sensitivities
+              <Text style={[styles.sectionTitle, isRtl && styles.textRight]}>
+                {t('profile.healthInfo')}
               </Text>
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Medical Conditions</Text>
+              <Text style={[styles.label, isRtl && styles.textRight]}>
+                {t('profile.foodAllergies')}
+              </Text>
+              <TextInput
+                value={formData.foodAllergies}
+                onChangeText={(text) => updateField('foodAllergies', text)}
+                placeholder={t('profile.foodAllergiesPlaceholder')}
+                multiline
+                numberOfLines={3}
+                style={[styles.input, styles.textarea, isRtl && styles.textRight]}
+              />
+              <Text style={[styles.hint, isRtl && styles.textRight]}>
+                {t('profile.foodAllergiesHint')}
+              </Text>
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={[styles.label, isRtl && styles.textRight]}>
+                {t('profile.medicalConditions')}
+              </Text>
               <TextInput
                 value={formData.medicalConditions}
                 onChangeText={(text) => updateField('medicalConditions', text)}
-                placeholder="e.g., Diabetes, Hypertension, or None"
+                placeholder={t('profile.medicalConditionsPlaceholder')}
                 multiline
                 numberOfLines={3}
-                style={[styles.input, styles.textarea]}
+                style={[styles.input, styles.textarea, isRtl && styles.textRight]}
               />
-              <Text style={styles.hint}>
-                Share relevant medical conditions for personalized guidance
+              <Text style={[styles.hint, isRtl && styles.textRight]}>
+                {t('profile.medicalConditionsHint')}
               </Text>
             </View>
 
             <TouchableOpacity
-              style={styles.manageInjuriesButton}
+              style={[styles.manageInjuriesButton, isRtl && styles.rowReverse]}
               onPress={() => navigation.navigate('ManageInjuries')}
               activeOpacity={0.8}
             >
@@ -470,9 +496,11 @@ export default function ProfileScreen({ navigation }: any) {
               </View>
 
               <View style={styles.manageInjuriesTextWrap}>
-                <Text style={styles.manageInjuriesTitle}>Manage Injuries</Text>
-                <Text style={styles.manageInjuriesSubtitle}>
-                  Add or update injury notes
+                <Text style={[styles.manageInjuriesTitle, isRtl && styles.textRight]}>
+                  {t('profile.manageInjuries')}
+                </Text>
+                <Text style={[styles.manageInjuriesSubtitle, isRtl && styles.textRight]}>
+                  {t('profile.manageInjuriesSubtitle')}
                 </Text>
               </View>
 
@@ -481,7 +509,11 @@ export default function ProfileScreen({ navigation }: any) {
           </View>
 
           <TouchableOpacity
-            style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
+            style={[
+              styles.saveButton,
+              isRtl && styles.rowReverse,
+              isSaving && styles.saveButtonDisabled,
+            ]}
             onPress={handleSave}
             disabled={isSaving}
             activeOpacity={0.8}
@@ -801,5 +833,11 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.92)',
     fontSize: 13,
     lineHeight: 18,
+  },
+  rowReverse: {
+    flexDirection: 'row-reverse',
+  },
+  textRight: {
+    textAlign: 'right',
   },
 });

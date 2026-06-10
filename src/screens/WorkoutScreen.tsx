@@ -34,6 +34,7 @@ import { type WorkoutExerciseItem } from '../services/workout';
 import { useLatestWorkoutPlanQuery } from '../hooks/training/queries/useLatestWorkoutPlanQuery';
 import { useGenerateTrainingPlanMutation } from '../hooks/training/mutations/useGenerateTrainingPlanMutation';
 import { useModifyTrainingPlanMutation } from '../hooks/training/mutations/useModifyTrainingPlanMutation';
+import { useTranslation } from '../i18n';
 
 type DayGroup = {
   dayNumber: number;
@@ -137,6 +138,7 @@ function prettifyApiError(message?: string) {
 }
 
 export default function WorkoutScreen() {
+  const { t, isRtl } = useTranslation();
   const {
     data: activePlan = null,
     isLoading,
@@ -194,9 +196,13 @@ export default function WorkoutScreen() {
 
   useEffect(() => {
     if (isError) {
-      showAppAlert('Load Failed', prettifyApiError((error as Error)?.message), 'error');
+      showAppAlert(
+        t('workout.loadFailed'),
+        prettifyApiError((error as Error)?.message),
+        'error'
+      );
     }
-  }, [isError, error]);
+  }, [isError, error, t]);
 
   useEffect(() => {
     if (!dayGroups.length) {
@@ -242,13 +248,12 @@ export default function WorkoutScreen() {
       const response = await generateMutation.mutateAsync();
 
       showAppAlert(
-        'Plan Request Sent',
-        response?.message ||
-          'Your training plan was sent for generation and is waiting for coach approval.',
+        t('workout.planRequestSent'),
+        response?.message || t('workout.planRequestText'),
         'success'
       );
     } catch (error: any) {
-      showAppAlert('Generate Failed', prettifyApiError(error?.message), 'error');
+      showAppAlert(t('workout.generateFailed'), prettifyApiError(error?.message), 'error');
     }
   };
 
@@ -256,7 +261,7 @@ export default function WorkoutScreen() {
     const url = String(exerciseItem.exercise?.video_url ?? '').trim();
 
     if (!url) {
-      showAppAlert('No Video', 'This exercise does not have a video link yet.', 'info');
+      showAppAlert(t('workout.noVideo'), t('workout.noVideoText'), 'info');
       return;
     }
 
@@ -294,12 +299,12 @@ export default function WorkoutScreen() {
 
   const handleSubmitModification = async () => {
     if (!activePlan?.id) {
-      showAppAlert('No Plan', 'There is no accepted plan to modify right now.', 'info');
+      showAppAlert(t('workout.noPlan'), t('workout.noPlanModify'), 'info');
       return;
     }
 
     if (!modificationRequest.trim()) {
-      showAppAlert('Missing Request', 'Please write what you want changed in the plan.', 'info');
+      showAppAlert(t('workout.missingRequest'), t('workout.missingRequestText'), 'info');
       return;
     }
 
@@ -324,7 +329,7 @@ export default function WorkoutScreen() {
         'success'
       );
     } catch (error: any) {
-      showAppAlert('Modify Failed', prettifyApiError(error?.message), 'error');
+      showAppAlert(t('workout.modifyFailed'), prettifyApiError(error?.message), 'error');
     }
   };
 
@@ -332,7 +337,7 @@ export default function WorkoutScreen() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#0D7D6D" />
-        <Text style={styles.loadingText}>Loading your workout plan...</Text>
+        <Text style={styles.loadingText}>{t('workout.loading')}</Text>
       </View>
     );
   }
@@ -361,13 +366,15 @@ export default function WorkoutScreen() {
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
           <View style={styles.header}>
-            <View style={styles.headerTopRow}>
+            <View style={[styles.headerTopRow, isRtl && styles.rowReverse]}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.headerTitle}>Smart Workout Plan</Text>
-                <Text style={styles.headerSubtitle}>
+                <Text style={[styles.headerTitle, isRtl && styles.textRight]}>
+                  {t('workout.smartTitle')}
+                </Text>
+                <Text style={[styles.headerSubtitle, isRtl && styles.textRight]}>
                   {activePlan
                     ? `${activePlan.name} • ${activePlan.level}`
-                    : 'No approved workout plan yet'}
+                    : t('workout.noApproved')}
                 </Text>
               </View>
 
@@ -385,18 +392,20 @@ export default function WorkoutScreen() {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.headerMetaRow}>
+            <View style={[styles.headerMetaRow, isRtl && styles.rowReverse]}>
               <View style={styles.headerMetaBadge}>
                 <Text style={styles.headerMetaText}>
-                  Status: {activePlan?.is_active ?? 'No active plan'}
+                  {t('workout.status')}: {activePlan?.is_active ?? t('workout.noActivePlan')}
                 </Text>
               </View>
               <View style={styles.headerMetaBadge}>
-                <Text style={styles.headerMetaText}>Days: {dayGroups.length}</Text>
+                <Text style={styles.headerMetaText}>
+                  {t('workout.days')}: {dayGroups.length}
+                </Text>
               </View>
             </View>
 
-            <View style={styles.headerActions}>
+            <View style={[styles.headerActions, isRtl && styles.rowReverse]}>
               <TouchableOpacity
                 style={[styles.primaryActionButton, generateLoading && styles.buttonDisabled]}
                 activeOpacity={0.85}
@@ -408,7 +417,7 @@ export default function WorkoutScreen() {
                 ) : (
                   <>
                     <Wand2 color="#FFFFFF" size={16} />
-                    <Text style={styles.primaryActionText}>Generate Plan</Text>
+                    <Text style={styles.primaryActionText}>{t('workout.generatePlan')}</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -427,7 +436,7 @@ export default function WorkoutScreen() {
                 ) : (
                   <>
                     <Settings2 color="#0D7D6D" size={16} />
-                    <Text style={styles.secondaryActionText}>Modify Plan</Text>
+                    <Text style={styles.secondaryActionText}>{t('workout.modifyPlan')}</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -435,21 +444,20 @@ export default function WorkoutScreen() {
           </View>
 
           <AITipCard
-            title="AI Tip"
+            title={t('common.aiTip')}
             text={
               activePlan
-                ? 'Tap the play button to open the exercise video. Tap the exercise card itself to view instructions and common mistakes.'
-                : 'You do not have an accepted plan yet. Start by generating a new training plan.'
+                ? t('workout.tipActive')
+                : t('workout.tipInactive')
             }
           />
 
           {!activePlan || dayGroups.length === 0 ? (
             <View style={styles.emptyCard}>
               <Zap color="#0D7D6D" size={28} />
-              <Text style={styles.emptyTitle}>No approved plan yet</Text>
+              <Text style={styles.emptyTitle}>{t('workout.emptyTitle')}</Text>
               <Text style={styles.emptyText}>
-                Generate a training plan first. After coach approval, your latest accepted plan
-                will appear here automatically.
+                {t('workout.emptyText')}
               </Text>
             </View>
           ) : (
@@ -461,7 +469,7 @@ export default function WorkoutScreen() {
               return (
                 <View key={day.dayNumber} style={styles.dayCard}>
                   <TouchableOpacity
-                    style={styles.dayHeader}
+                    style={[styles.dayHeader, isRtl && styles.rowReverse]}
                     onPress={() =>
                       setExpandedDay(expandedDay === day.dayNumber ? null : day.dayNumber)
                     }
@@ -519,6 +527,7 @@ export default function WorkoutScreen() {
                               key={exerciseItem.id}
                               style={[
                                 styles.exerciseItem,
+                                isRtl && styles.rowReverse,
                                 completed && styles.exerciseItemCompleted,
                               ]}
                               activeOpacity={0.85}
@@ -529,7 +538,7 @@ export default function WorkoutScreen() {
                               <View style={styles.exerciseContent}>
                                 <View style={styles.exerciseHeader}>
                                   <Text style={styles.exerciseName} numberOfLines={2}>
-                                    {exerciseItem.exercise?.name ?? 'Exercise'}
+                                    {exerciseItem.exercise?.name ?? t('workout.exercise')}
                                   </Text>
                                   <View
                                     style={[
@@ -552,8 +561,11 @@ export default function WorkoutScreen() {
                                 </View>
 
                                 <Text style={styles.exerciseSets}>
-                                  {exerciseItem.sets} sets • {exerciseItem.reps} reps • Rest{' '}
-                                  {exerciseItem.rest_seconds}s
+                                  {t('workout.exerciseStats', {
+                                    sets: exerciseItem.sets,
+                                    reps: exerciseItem.reps,
+                                    rest: exerciseItem.rest_seconds,
+                                  })}
                                 </Text>
                               </View>
 
@@ -613,11 +625,14 @@ export default function WorkoutScreen() {
               <>
                 <Text style={styles.modalEmoji}>🏋️</Text>
                 <Text style={styles.modalTitle}>
-                  {selectedExercise.exercise?.name ?? 'Exercise'}
+                  {selectedExercise.exercise?.name ?? t('workout.exercise')}
                 </Text>
                 <Text style={styles.modalSets}>
-                  {selectedExercise.sets} sets • {selectedExercise.reps} reps • Rest{' '}
-                  {selectedExercise.rest_seconds}s
+                  {t('workout.exerciseStats', {
+                    sets: selectedExercise.sets,
+                    reps: selectedExercise.reps,
+                    rest: selectedExercise.rest_seconds,
+                  })}
                 </Text>
 
                 <TouchableOpacity
@@ -626,7 +641,7 @@ export default function WorkoutScreen() {
                   onPress={() => handleOpenVideo(selectedExercise)}
                 >
                   <Play color="#FFFFFF" size={16} />
-                  <Text style={styles.watchVideoButtonText}>Watch Exercise Video</Text>
+                  <Text style={styles.watchVideoButtonText}>{t('workout.watchVideo')}</Text>
                 </TouchableOpacity>
 
                 <View style={styles.modalInfo}>
@@ -636,7 +651,7 @@ export default function WorkoutScreen() {
                       <Text style={styles.infoTitle}>Correct Form</Text>
                     </View>
                     <Text style={styles.infoText}>
-                      {selectedExercise.exercise?.instructions || 'No instructions available.'}
+                      {selectedExercise.exercise?.instructions || t('workout.noInstructions')}
                     </Text>
                   </View>
 
@@ -647,7 +662,7 @@ export default function WorkoutScreen() {
                     </View>
                     <Text style={styles.warningText}>
                       {selectedExercise.exercise?.common_mistakes ||
-                        'No common mistakes available.'}
+                        t('workout.noMistakes')}
                     </Text>
                   </View>
 
@@ -683,9 +698,11 @@ export default function WorkoutScreen() {
           >
             <View style={styles.modifyHeader}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.modifyTitle}>Modify Workout Plan</Text>
-                <Text style={styles.modifySubtitle}>
-                  Tell the AI what should change in your current approved plan
+                <Text style={[styles.modifyTitle, isRtl && styles.textRight]}>
+                  {t('workout.modifyTitle')}
+                </Text>
+                <Text style={[styles.modifySubtitle, isRtl && styles.textRight]}>
+                  {t('workout.modifySubtitle')}
                 </Text>
               </View>
 
@@ -696,19 +713,22 @@ export default function WorkoutScreen() {
 
             <ScrollView showsVerticalScrollIndicator={false}>
               <View style={styles.modifyIntroCard}>
-                <Text style={styles.modifyIntroTitle}>Request Payload Preview</Text>
+                <Text style={[styles.modifyIntroTitle, isRtl && styles.textRight]}>
+                  {t('workout.payloadPreview')}
+                </Text>
                 <Text style={styles.modifyIntroText}>
                   current_plan_id: {activePlan?.id ?? 'N/A'}
                 </Text>
                 <Text style={styles.modifyIntroText}>
-                  This request will send your selected pain areas, difficulty,
-                  disliked exercises, liked exercises, and your written modification request.
+                  {t('workout.payloadText')}
                 </Text>
               </View>
 
-              <Text style={styles.fieldLabel}>1. Pain Areas</Text>
-              <Text style={styles.fieldHelper}>
-                Select any pain or injury areas the AI should avoid aggravating.
+              <Text style={[styles.fieldLabel, isRtl && styles.textRight]}>
+                {t('workout.painAreas')}
+              </Text>
+              <Text style={[styles.fieldHelper, isRtl && styles.textRight]}>
+                {t('workout.painAreasHelp')}
               </Text>
               <View style={styles.chipsWrap}>
                 {painAreaOptions.map((area) => {
@@ -729,9 +749,11 @@ export default function WorkoutScreen() {
                 })}
               </View>
 
-              <Text style={styles.fieldLabel}>2. Difficulty</Text>
-              <Text style={styles.fieldHelper}>
-                Choose how the current plan feels to you.
+              <Text style={[styles.fieldLabel, isRtl && styles.textRight]}>
+                {t('workout.difficulty')}
+              </Text>
+              <Text style={[styles.fieldHelper, isRtl && styles.textRight]}>
+                {t('workout.difficultyHelp')}
               </Text>
               <View style={styles.difficultyList}>
                 {difficultyOptions.map((option) => {
@@ -765,9 +787,11 @@ export default function WorkoutScreen() {
                 })}
               </View>
 
-              <Text style={styles.fieldLabel}>3. Exercises You Want Changed</Text>
-              <Text style={styles.fieldHelper}>
-                Tap the exercises you want the AI to replace or avoid.
+              <Text style={[styles.fieldLabel, isRtl && styles.textRight]}>
+                {t('workout.exercisesChanged')}
+              </Text>
+              <Text style={[styles.fieldHelper, isRtl && styles.textRight]}>
+                {t('workout.exercisesChangedHelp')}
               </Text>
               <View style={styles.chipsWrap}>
                 {currentExerciseNames.length ? (
@@ -793,24 +817,26 @@ export default function WorkoutScreen() {
                     );
                   })
                 ) : (
-                  <Text style={styles.helperText}>No current exercises found.</Text>
+                  <Text style={styles.helperText}>{t('workout.noCurrentExercises')}</Text>
                 )}
               </View>
 
-              <Text style={styles.fieldLabel}>4. Modification Request</Text>
-              <Text style={styles.fieldHelper}>
-                Write exactly what you want, like split changes, easier plan, or safer alternatives.
+              <Text style={[styles.fieldLabel, isRtl && styles.textRight]}>
+                {t('workout.modificationRequest')}
+              </Text>
+              <Text style={[styles.fieldHelper, isRtl && styles.textRight]}>
+                {t('workout.modificationRequestHelp')}
               </Text>
               <View style={styles.requestBox}>
                 <View style={styles.requestHeader}>
                   <MessageSquareText color="#0D7D6D" size={16} />
-                  <Text style={styles.requestHeaderText}>Your Request</Text>
+                  <Text style={styles.requestHeaderText}>{t('workout.yourRequest')}</Text>
                 </View>
 
                 <TextInput
                   value={modificationRequest}
                   onChangeText={setModificationRequest}
-                  placeholder="Example: Please change my current plan to a 5-day split: Day 1 chest and triceps, Day 2 back and biceps, Day 3 shoulders, Day 4 biceps and triceps, Day 5 legs. Avoid exercises that aggravate the elbow and keep the plan easier than before."
+                  placeholder={t('workout.requestPlaceholder')}
                   placeholderTextColor="#9CA3AF"
                   multiline
                   textAlignVertical="top"
@@ -819,7 +845,7 @@ export default function WorkoutScreen() {
               </View>
 
               <View style={styles.summaryBox}>
-                <Text style={styles.summaryTitle}>Final Payload Summary</Text>
+                <Text style={styles.summaryTitle}>{t('workout.finalPayload')}</Text>
                 <Text style={styles.summaryText}>
                   • current_plan_id: {activePlan?.id ?? 'N/A'}
                 </Text>
@@ -844,7 +870,7 @@ export default function WorkoutScreen() {
                 {modifyLoading ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.submitButtonText}>Submit Modification</Text>
+                  <Text style={styles.submitButtonText}>{t('workout.submitModification')}</Text>
                 )}
               </TouchableOpacity>
             </ScrollView>
@@ -1527,5 +1553,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  rowReverse: {
+    flexDirection: 'row-reverse',
+  },
+  textRight: {
+    textAlign: 'right',
   },
 });

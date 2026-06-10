@@ -28,6 +28,7 @@ import {
   type InjuryStatus,
   type UserInjury,
 } from '../services/injuries';
+import { useTranslation } from '../i18n';
 
 type ToastState = {
   visible: boolean;
@@ -68,6 +69,7 @@ function formatValue(value?: string | null) {
 }
 
 export default function ManageInjuriesScreen({ navigation }: any) {
+  const { t, isRtl } = useTranslation();
   const [injuries, setInjuries] = useState<UserInjury[]>([]);
   const [form, setForm] = useState<FormState>(initialFormState);
   const [editingInjury, setEditingInjury] = useState<UserInjury | null>(null);
@@ -107,11 +109,11 @@ export default function ManageInjuriesScreen({ navigation }: any) {
       const data = await getMyInjuries();
       setInjuries(data);
     } catch (error: any) {
-      showToast(error?.message || 'Failed to load injuries.', 'error');
+      showToast(error?.message || t('injuries.loadFailed'), 'error');
     } finally {
       setLoading(false);
     }
-  }, [showToast]);
+  }, [showToast, t]);
 
   useEffect(() => {
     loadInjuries();
@@ -140,7 +142,7 @@ export default function ManageInjuriesScreen({ navigation }: any) {
     const injury_type = form.injury_type.trim();
 
     if (!injury_type) {
-      showToast('Please enter an injury type.', 'error');
+      showToast(t('injuries.typeRequired'), 'error');
       return;
     }
 
@@ -156,34 +158,34 @@ export default function ManageInjuriesScreen({ navigation }: any) {
 
       if (editingInjury?.id) {
         await updateMyInjury(editingInjury.id, payload);
-        showToast('Injury updated.', 'success');
+        showToast(t('injuries.updated'), 'success');
       } else {
         const response = await createMyInjury(payload);
         const aiModification = response.ai_modification;
 
         if (aiModification?.warning) {
-          console.warn('Injury AI modification warning:', aiModification.warning);
+          console.warn(t('injuries.aiWarning'), aiModification.warning);
         }
 
         if (aiModification?.created === true) {
           showToast(
-            'Injury saved. AI training modification request has been created for coach review.',
+            t('injuries.savedWithRequest'),
             'success'
           );
         } else if (aiModification?.created === false) {
           showToast(
-            'Injury saved, but no training modification was created because no active plan was found.',
+            t('injuries.savedNoPlan'),
             'info'
           );
         } else {
-          showToast('Injury saved successfully.', 'success');
+          showToast(t('injuries.saved'), 'success');
         }
       }
 
       resetForm();
       await loadInjuries();
     } catch (error: any) {
-      showToast(error?.message || 'Failed to save injury.', 'error');
+      showToast(error?.message || t('injuries.saveFailed'), 'error');
     } finally {
       setSaving(false);
     }
@@ -194,10 +196,10 @@ export default function ManageInjuriesScreen({ navigation }: any) {
       setDeletingId(injury.id);
       await deleteMyInjury(injury.id);
       setPendingDeleteId(null);
-      showToast('Injury deleted.', 'success');
+      showToast(t('injuries.deleted'), 'success');
       await loadInjuries();
     } catch (error: any) {
-      showToast(error?.message || 'Failed to delete injury.', 'error');
+      showToast(error?.message || t('injuries.deleteFailed'), 'error');
     } finally {
       setDeletingId(null);
     }
@@ -214,10 +216,10 @@ export default function ManageInjuriesScreen({ navigation }: any) {
         status: 'recovered',
         notes: injury.notes || null,
       });
-      showToast('Injury marked recovered.', 'success');
+      showToast(t('injuries.recovered'), 'success');
       await loadInjuries();
     } catch (error: any) {
-      showToast(error?.message || 'Failed to update injury.', 'error');
+      showToast(error?.message || t('injuries.updateFailed'), 'error');
     } finally {
       setSaving(false);
     }
@@ -236,8 +238,12 @@ export default function ManageInjuriesScreen({ navigation }: any) {
           </TouchableOpacity>
 
           <View style={styles.headerContent}>
-            <Text style={styles.headerTitle}>Manage Injuries</Text>
-            <Text style={styles.headerSubtitle}>Keep your health notes current</Text>
+            <Text style={[styles.headerTitle, isRtl && styles.textRight]}>
+              {t('injuries.title')}
+            </Text>
+            <Text style={[styles.headerSubtitle, isRtl && styles.textRight]}>
+              {t('injuries.subtitle')}
+            </Text>
           </View>
         </View>
 
@@ -247,7 +253,7 @@ export default function ManageInjuriesScreen({ navigation }: any) {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.card}>
-            <View style={styles.sectionHeader}>
+            <View style={[styles.sectionHeader, isRtl && styles.rowReverse]}>
               <View style={styles.sectionIcon}>
                 {editingInjury ? (
                   <Edit2 color="#0D7D6D" size={16} />
@@ -256,25 +262,29 @@ export default function ManageInjuriesScreen({ navigation }: any) {
                 )}
               </View>
               <Text style={styles.sectionTitle}>
-                {editingInjury ? 'Edit Injury' : 'Add Injury'}
+                {editingInjury ? t('injuries.editTitle') : t('injuries.addTitle')}
               </Text>
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Injury Type</Text>
+              <Text style={[styles.label, isRtl && styles.textRight]}>
+                {t('injuries.type')}
+              </Text>
               <TextInput
                 value={form.injury_type}
                 onChangeText={(value) =>
                   setForm((prev) => ({ ...prev, injury_type: value }))
                 }
-                placeholder="e.g., Left knee, Lower back"
+                placeholder={t('injuries.typePlaceholder')}
                 placeholderTextColor="#9CA3AF"
-                style={styles.input}
+                style={[styles.input, isRtl && styles.textRight]}
               />
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Severity</Text>
+              <Text style={[styles.label, isRtl && styles.textRight]}>
+                {t('injuries.severity')}
+              </Text>
               <View style={styles.optionsRow}>
                 {severityOptions.map((option) => {
                   const active = form.severity === option.value;
@@ -307,7 +317,9 @@ export default function ManageInjuriesScreen({ navigation }: any) {
 
             {editingInjury && (
               <View style={styles.formGroup}>
-                <Text style={styles.label}>Status</Text>
+                <Text style={[styles.label, isRtl && styles.textRight]}>
+                  {t('injuries.status')}
+                </Text>
                 <View style={styles.optionsRow}>
                   {statusOptions.map((option) => {
                     const active = form.status === option.value;
@@ -340,17 +352,19 @@ export default function ManageInjuriesScreen({ navigation }: any) {
             )}
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Notes</Text>
+              <Text style={[styles.label, isRtl && styles.textRight]}>
+                {t('injuries.notes')}
+              </Text>
               <TextInput
                 value={form.notes}
                 onChangeText={(value) =>
                   setForm((prev) => ({ ...prev, notes: value }))
                 }
-                placeholder="Optional details"
+                placeholder={t('injuries.notesPlaceholder')}
                 placeholderTextColor="#9CA3AF"
                 multiline
                 numberOfLines={3}
-                style={[styles.input, styles.textarea]}
+                style={[styles.input, styles.textarea, isRtl && styles.textRight]}
               />
             </View>
 
@@ -363,7 +377,7 @@ export default function ManageInjuriesScreen({ navigation }: any) {
                   disabled={saving}
                 >
                   <X color="#6B7280" size={18} />
-                  <Text style={styles.secondaryButtonText}>Cancel</Text>
+                  <Text style={styles.secondaryButtonText}>{t('common.cancel')}</Text>
                 </TouchableOpacity>
               )}
 
@@ -379,7 +393,7 @@ export default function ManageInjuriesScreen({ navigation }: any) {
                   <>
                     <Check color="#FFFFFF" size={18} />
                     <Text style={styles.saveButtonText}>
-                      {editingInjury ? 'Update Injury' : 'Add Injury'}
+                      {editingInjury ? t('injuries.update') : t('injuries.add')}
                     </Text>
                   </>
                 )}
@@ -388,24 +402,24 @@ export default function ManageInjuriesScreen({ navigation }: any) {
           </View>
 
           <View style={styles.card}>
-            <View style={styles.sectionHeader}>
+            <View style={[styles.sectionHeader, isRtl && styles.rowReverse]}>
               <View style={styles.sectionIcon}>
                 <HeartPulse color="#0D7D6D" size={16} />
               </View>
-              <Text style={styles.sectionTitle}>Saved Injuries</Text>
+              <Text style={styles.sectionTitle}>{t('injuries.savedList')}</Text>
             </View>
 
             {loading ? (
               <View style={styles.emptyState}>
                 <ActivityIndicator color="#0D7D6D" />
-                <Text style={styles.emptyText}>Loading injuries...</Text>
+                <Text style={styles.emptyText}>{t('injuries.loading')}</Text>
               </View>
             ) : sortedInjuries.length === 0 ? (
               <View style={styles.emptyState}>
                 <CircleAlert color="#9CA3AF" size={22} />
-                <Text style={styles.emptyTitle}>No injuries saved</Text>
+                <Text style={styles.emptyTitle}>{t('injuries.emptyTitle')}</Text>
                 <Text style={styles.emptyText}>
-                  Add active or past injuries here when needed.
+                  {t('injuries.emptyText')}
                 </Text>
               </View>
             ) : (
@@ -447,7 +461,7 @@ export default function ManageInjuriesScreen({ navigation }: any) {
                         onPress={() => beginEdit(injury)}
                       >
                         <Edit2 color="#0D7D6D" size={14} />
-                        <Text style={styles.itemActionText}>Edit</Text>
+                        <Text style={styles.itemActionText}>{t('common.edit')}</Text>
                       </TouchableOpacity>
 
                       {injury.status !== 'recovered' && (
@@ -458,7 +472,7 @@ export default function ManageInjuriesScreen({ navigation }: any) {
                           disabled={saving}
                         >
                           <Check color="#0D7D6D" size={14} />
-                          <Text style={styles.itemActionText}>Recover</Text>
+                          <Text style={styles.itemActionText}>{t('injuries.recover')}</Text>
                         </TouchableOpacity>
                       )}
 
@@ -469,14 +483,14 @@ export default function ManageInjuriesScreen({ navigation }: any) {
                         disabled={deletingId === injury.id}
                       >
                         <Trash2 color="#DC2626" size={14} />
-                        <Text style={styles.deleteActionText}>Delete</Text>
+                        <Text style={styles.deleteActionText}>{t('injuries.delete')}</Text>
                       </TouchableOpacity>
                     </View>
 
                     {pendingDeleteId === injury.id && (
                       <View style={styles.deleteConfirmBox}>
                         <Text style={styles.deleteConfirmText}>
-                          Delete this injury?
+                          {t('injuries.deleteConfirm')}
                         </Text>
 
                         <View style={styles.deleteConfirmActions}>
@@ -486,7 +500,7 @@ export default function ManageInjuriesScreen({ navigation }: any) {
                             onPress={() => setPendingDeleteId(null)}
                             disabled={deletingId === injury.id}
                           >
-                            <Text style={styles.deleteCancelText}>Cancel</Text>
+                            <Text style={styles.deleteCancelText}>{t('common.cancel')}</Text>
                           </TouchableOpacity>
 
                           <TouchableOpacity
@@ -499,7 +513,7 @@ export default function ManageInjuriesScreen({ navigation }: any) {
                               <ActivityIndicator color="#FFFFFF" size="small" />
                             ) : (
                               <Text style={styles.deleteConfirmTextButton}>
-                                Confirm Delete
+                                {t('injuries.confirmDelete')}
                               </Text>
                             )}
                           </TouchableOpacity>
@@ -859,5 +873,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  rowReverse: {
+    flexDirection: 'row-reverse',
+  },
+  textRight: {
+    textAlign: 'right',
   },
 });

@@ -43,6 +43,7 @@ import {
   isTodaySession,
   sortSessionsByDateTime,
 } from '../utils/coachSessionUtils';
+import { useTranslation } from '../i18n';
 
 type ToastState = {
   visible: boolean;
@@ -90,6 +91,7 @@ function getStatusBadgeStyle(record: MemberSessionRecord, session: CoachSession 
 }
 
 export default function MyScheduleScreen() {
+  const { t, isRtl } = useTranslation();
   const mySessionsQuery = useMySessions();
   const cancelMutation = useCancelMySession();
 
@@ -168,16 +170,16 @@ export default function MyScheduleScreen() {
     const sessionId = getBookedSessionId(record);
 
     if (sessionId == null) {
-      showToast('This booking is missing a session ID.', 'error');
+      showToast(t('schedule.missingId'), 'error');
       return;
     }
 
     try {
       setCancellingSessionId(String(sessionId));
       const response = await cancelMutation.mutateAsync(sessionId);
-      showToast(response?.message || 'Session cancelled.', 'success');
+      showToast(response?.message || t('schedule.cancelledSuccess'), 'success');
     } catch (error: any) {
-      showToast(error?.message || 'Failed to cancel session.', 'error');
+      showToast(error?.message || t('schedule.cancelFailed'), 'error');
     } finally {
       setCancellingSessionId(null);
     }
@@ -187,7 +189,7 @@ export default function MyScheduleScreen() {
     return (
       <View style={styles.centerState}>
         <ActivityIndicator size="large" color="#14B8A6" />
-        <Text style={styles.centerText}>Loading your schedule...</Text>
+        <Text style={styles.centerText}>{t('schedule.loading')}</Text>
       </View>
     );
   }
@@ -196,14 +198,14 @@ export default function MyScheduleScreen() {
     return (
       <View style={styles.centerState}>
         <CircleAlert color="#F87171" size={32} />
-        <Text style={styles.centerTitle}>Could not load schedule</Text>
+        <Text style={styles.centerTitle}>{t('schedule.loadFailedTitle')}</Text>
         <Text style={styles.centerText}>
           {mySessionsQuery.error instanceof Error
             ? mySessionsQuery.error.message
-            : 'Failed to load booked sessions.'}
+            : t('schedule.loadFailed')}
         </Text>
         <TouchableOpacity style={styles.retryButton} onPress={() => mySessionsQuery.refetch()}>
-          <Text style={styles.retryButtonText}>Try Again</Text>
+          <Text style={styles.retryButtonText}>{t('common.tryAgain')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -213,23 +215,23 @@ export default function MyScheduleScreen() {
   const sections = [
     {
       key: 'today',
-      title: 'Today',
+      title: t('schedule.today'),
       accent: '#14B8A6',
-      empty: 'No sessions booked for today.',
+      empty: t('schedule.noToday'),
       items: grouped.today,
     },
     {
       key: 'upcoming',
-      title: 'Upcoming',
+      title: t('schedule.upcoming'),
       accent: '#3B82F6',
-      empty: 'No upcoming sessions yet.',
+      empty: t('schedule.noUpcoming'),
       items: grouped.upcoming,
     },
     {
       key: 'past',
-      title: 'Past',
+      title: t('schedule.past'),
       accent: '#8EA3A0',
-      empty: 'No past sessions yet.',
+      empty: t('schedule.noPast'),
       items: grouped.past,
     },
   ];
@@ -254,10 +256,14 @@ export default function MyScheduleScreen() {
           end={{ x: 1, y: 1 }}
           style={styles.hero}
         >
-          <View style={styles.heroTopRow}>
+          <View style={[styles.heroTopRow, isRtl && styles.rowReverse]}>
             <View style={styles.heroTextWrap}>
-              <Text style={styles.heroTitle}>My Schedule</Text>
-              <Text style={styles.heroSubtitle}>Your booked training sessions</Text>
+              <Text style={[styles.heroTitle, isRtl && styles.textRight]}>
+                {t('schedule.title')}
+              </Text>
+              <Text style={[styles.heroSubtitle, isRtl && styles.textRight]}>
+                {t('schedule.subtitle')}
+              </Text>
             </View>
 
             <TouchableOpacity
@@ -277,15 +283,15 @@ export default function MyScheduleScreen() {
           <View style={styles.statsRow}>
             <View style={styles.statCard}>
               <Text style={styles.statValue}>{stats.upcoming}</Text>
-              <Text style={styles.statLabel}>Upcoming</Text>
+              <Text style={styles.statLabel}>{t('schedule.upcoming')}</Text>
             </View>
             <View style={styles.statCard}>
               <Text style={styles.statValue}>{stats.today}</Text>
-              <Text style={styles.statLabel}>Today</Text>
+              <Text style={styles.statLabel}>{t('schedule.today')}</Text>
             </View>
             <View style={styles.statCard}>
               <Text style={styles.statValue}>{stats.past}</Text>
-              <Text style={styles.statLabel}>Past</Text>
+              <Text style={styles.statLabel}>{t('schedule.past')}</Text>
             </View>
           </View>
         </LinearGradient>
@@ -294,15 +300,15 @@ export default function MyScheduleScreen() {
           {!hasAnySessions ? (
             <View style={styles.emptyCard}>
               <CalendarCheck color="#14B8A6" size={34} />
-              <Text style={styles.emptyTitle}>No booked sessions</Text>
+              <Text style={styles.emptyTitle}>{t('schedule.emptyTitle')}</Text>
               <Text style={styles.emptyText}>
-                Book an available coach session and it will appear here.
+                {t('schedule.emptyText')}
               </Text>
             </View>
           ) : (
             sections.map((section) => (
               <View key={section.key} style={styles.section}>
-                <View style={styles.sectionHeader}>
+                <View style={[styles.sectionHeader, isRtl && styles.rowReverse]}>
                   <View
                     style={[styles.sectionAccent, { backgroundColor: section.accent }]}
                   />
@@ -337,7 +343,7 @@ export default function MyScheduleScreen() {
                             section.key === 'today' && styles.sessionCardToday,
                           ]}
                         >
-                          <View style={styles.cardTopRow}>
+                          <View style={[styles.cardTopRow, isRtl && styles.rowReverse]}>
                             <View style={styles.coachAvatar}>
                               <Text style={styles.coachAvatarText}>
                                 {getCoachInitials(coachName)}
@@ -359,7 +365,7 @@ export default function MyScheduleScreen() {
                                     {section.key === 'past' &&
                                     !isBookingCancelled(record) &&
                                     !isBookingCompleted(record)
-                                      ? 'Past'
+                                      ? t('schedule.past')
                                       : getMySessionStatusLabel(record)}
                                   </Text>
                                 </View>
@@ -387,15 +393,15 @@ export default function MyScheduleScreen() {
                             </View>
                           </View>
 
-                          <View style={styles.cardBottomRow}>
+                          <View style={[styles.cardBottomRow, isRtl && styles.rowReverse]}>
                             <View style={styles.datePill}>
                               <CalendarDays color="#14B8A6" size={14} />
                               <Text style={styles.datePillText}>
                                 {section.key === 'today'
-                                  ? 'Today'
+                                  ? t('schedule.today')
                                   : section.key === 'past'
-                                  ? 'Completed/Past'
-                                  : 'Booked'}
+                                  ? t('schedule.completedPast')
+                                  : t('schedule.booked')}
                               </Text>
                             </View>
 
@@ -413,7 +419,9 @@ export default function MyScheduleScreen() {
                                   <ActivityIndicator size="small" color="#FCA5A5" />
                                 ) : null}
                                 <Text style={styles.cancelButtonText}>
-                                  {cancellingThisSession ? 'Cancelling...' : 'Cancel'}
+                                  {cancellingThisSession
+                                    ? t('schedule.cancelling')
+                                    : t('schedule.cancel')}
                                 </Text>
                               </TouchableOpacity>
                             )}
@@ -781,5 +789,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 14,
     fontWeight: '800',
+  },
+  rowReverse: {
+    flexDirection: 'row-reverse',
+  },
+  textRight: {
+    textAlign: 'right',
   },
 });

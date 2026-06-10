@@ -17,10 +17,12 @@ import type { RootStackParamList } from '../navigation/Navigation';
 import { Colors, Spacing, BorderRadius, FontSizes } from '../constants/theme';
 import { useChangePasswordMutation } from '../hooks/auth/mutations/useChangePasswordMutation';
 import { clearAuth } from '../services/auth';
+import { useTranslation } from '../i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ChangePassword'>;
 
 export function ChangePasswordScreen({ navigation }: Props) {
+  const { t, isRtl } = useTranslation();
   const changePasswordMutation = useChangePasswordMutation();
 
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
@@ -65,19 +67,19 @@ export function ChangePasswordScreen({ navigation }: Props) {
 
   const handleSubmit = async () => {
     if (!formData.currentPassword.trim()) {
-      showToast('Please enter your current password.');
+      showToast(t('changePassword.currentRequired'));
       return;
     }
 
     if (!isPasswordValid) {
       showToast(
-        'New password must be at least 8 characters and include uppercase, lowercase, and a number.'
+        t('changePassword.invalidNew')
       );
       return;
     }
 
     if (formData.newPassword !== formData.confirmPassword) {
-      showToast('New password and confirm password do not match.');
+      showToast(t('changePassword.mismatch'));
       return;
     }
 
@@ -97,7 +99,7 @@ export function ChangePasswordScreen({ navigation }: Props) {
       });
 
       showToast(
-        'Password changed successfully. Please login again.',
+        t('changePassword.success'),
         'success'
       );
 
@@ -107,7 +109,7 @@ export function ChangePasswordScreen({ navigation }: Props) {
         navigation.replace('Login');
       }, 1200);
     } catch (error: any) {
-      showToast(error?.message || 'Failed to change password.', 'error');
+      showToast(error?.message || t('changePassword.failed'), 'error');
     } finally {
       setIsLoading(false);
     }
@@ -127,15 +129,19 @@ export function ChangePasswordScreen({ navigation }: Props) {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.card}>
-            <Text style={styles.title}>Change Password</Text>
+            <Text style={[styles.title, isRtl && styles.textRight]}>
+              {t('changePassword.title')}
+            </Text>
 
-            <Text style={styles.subtitle}>
-              Update your password from here. This screen is ready, but the backend endpoint is not connected yet.
+            <Text style={[styles.subtitle, isRtl && styles.textRight]}>
+              {t('changePassword.subtitle')}
             </Text>
 
             <View style={styles.formContainer}>
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Current Password</Text>
+                <Text style={[styles.label, isRtl && styles.textRight]}>
+                  {t('changePassword.current')}
+                </Text>
                 <View style={styles.inputWrapper}>
                   <Ionicons
                     name="lock-closed-outline"
@@ -145,7 +151,7 @@ export function ChangePasswordScreen({ navigation }: Props) {
                   />
                   <TextInput
                     style={[styles.input, styles.inputWithButton]}
-                    placeholder="Enter current password"
+                    placeholder={t('changePassword.currentPlaceholder')}
                     placeholderTextColor={Colors.textLight}
                     value={formData.currentPassword}
                     onChangeText={(value) =>
@@ -169,7 +175,9 @@ export function ChangePasswordScreen({ navigation }: Props) {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>New Password</Text>
+                <Text style={[styles.label, isRtl && styles.textRight]}>
+                  {t('changePassword.new')}
+                </Text>
                 <View style={styles.inputWrapper}>
                   <Ionicons
                     name="lock-closed-outline"
@@ -179,7 +187,7 @@ export function ChangePasswordScreen({ navigation }: Props) {
                   />
                   <TextInput
                     style={[styles.input, styles.inputWithButton]}
-                    placeholder="Enter new password"
+                    placeholder={t('changePassword.newPlaceholder')}
                     placeholderTextColor={Colors.textLight}
                     value={formData.newPassword}
                     onChangeText={(value) =>
@@ -203,7 +211,9 @@ export function ChangePasswordScreen({ navigation }: Props) {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Confirm New Password</Text>
+                <Text style={[styles.label, isRtl && styles.textRight]}>
+                  {t('changePassword.confirm')}
+                </Text>
                 <View style={styles.inputWrapper}>
                   <Ionicons
                     name="lock-closed-outline"
@@ -213,7 +223,7 @@ export function ChangePasswordScreen({ navigation }: Props) {
                   />
                   <TextInput
                     style={[styles.input, styles.inputWithButton]}
-                    placeholder="Re-enter new password"
+                    placeholder={t('changePassword.confirmPlaceholder')}
                     placeholderTextColor={Colors.textLight}
                     value={formData.confirmPassword}
                     onChangeText={(value) =>
@@ -237,7 +247,9 @@ export function ChangePasswordScreen({ navigation }: Props) {
               </View>
 
               <View style={styles.requirementsBox}>
-                <Text style={styles.requirementsTitle}>Password requirements:</Text>
+                <Text style={[styles.requirementsTitle, isRtl && styles.textRight]}>
+                  {t('reset.requirementsTitle')}
+                </Text>
 
                 <Text
                   style={[
@@ -249,7 +261,7 @@ export function ChangePasswordScreen({ navigation }: Props) {
                       : styles.defaultRequirement,
                   ]}
                 >
-                  • At least 8 characters long
+                  {t('reset.reqMinLength')}
                 </Text>
 
                 <Text
@@ -262,7 +274,7 @@ export function ChangePasswordScreen({ navigation }: Props) {
                       : styles.defaultRequirement,
                   ]}
                 >
-                  • Include at least one uppercase letter
+                  {t('reset.reqUppercase')}
                 </Text>
 
                 <Text
@@ -275,7 +287,7 @@ export function ChangePasswordScreen({ navigation }: Props) {
                       : styles.defaultRequirement,
                   ]}
                 >
-                  • Include at least one lowercase letter
+                  {t('reset.reqLowercase')}
                 </Text>
 
                 <Text
@@ -288,7 +300,7 @@ export function ChangePasswordScreen({ navigation }: Props) {
                       : styles.defaultRequirement,
                   ]}
                 >
-                  • Include at least one number
+                  {t('reset.reqNumber')}
                 </Text>
               </View>
 
@@ -307,7 +319,9 @@ export function ChangePasswordScreen({ navigation }: Props) {
                   {isLoading ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
-                    <Text style={styles.primaryButtonText}>Update Password</Text>
+                    <Text style={styles.primaryButtonText}>
+                      {t('changePassword.update')}
+                    </Text>
                   )}
                 </View>
               </TouchableOpacity>
@@ -317,7 +331,7 @@ export function ChangePasswordScreen({ navigation }: Props) {
                 activeOpacity={0.8}
                 onPress={() => navigation.goBack()}
               >
-                <Text style={styles.secondaryButtonText}>Back</Text>
+                <Text style={styles.secondaryButtonText}>{t('common.back')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -493,5 +507,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  textRight: {
+    textAlign: 'right',
   },
 });

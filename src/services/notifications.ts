@@ -67,7 +67,7 @@ export function routeNotificationData(data: NotificationData) {
   if (screen === 'Nutrition' || screen === 'NutritionPlan') {
     return navigateToMainTab('Nutrition');
   }
-  if (screen === 'Progress') return navigateToMainTab('Progress');
+  if (screen === 'Progress') return navigateToMainTab('Dashboard');
   if (screen === 'Dashboard') return navigateToMainTab('Dashboard');
   if (screen === 'ManageInjuries' || type === 'injury_update') {
     return navigate('ManageInjuries');

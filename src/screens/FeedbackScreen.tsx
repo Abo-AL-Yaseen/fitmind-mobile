@@ -35,6 +35,7 @@ import { useCreateFeedback } from '../hooks/feedback/mutations/useCreateFeedback
 import { useUpdateFeedback } from '../hooks/feedback/mutations/useUpdateFeedback';
 import { useDeleteFeedback } from '../hooks/feedback/mutations/useDeleteFeedback';
 import { useCoaches } from '../hooks/coaches/queries/useCoaches';
+import { useTranslation } from '../i18n';
 
 type ToastState = {
   visible: boolean;
@@ -44,15 +45,17 @@ type ToastState = {
 
 const FEEDBACK_TYPES: Array<{
   id: FeedbackType;
-  label: string;
+  labelKey: string;
   icon: typeof Wrench;
 }> = [
-  { id: 'equipment', label: 'Equipment Issue', icon: Wrench },
-  { id: 'suggestion', label: 'Suggestion', icon: MessageSquare },
-  { id: 'rating', label: 'Trainer Rating', icon: Star },
+  { id: 'equipment', labelKey: 'feedback.type.equipment', icon: Wrench },
+  { id: 'suggestion', labelKey: 'feedback.type.suggestion', icon: MessageSquare },
+  { id: 'rating', labelKey: 'feedback.type.rating', icon: Star },
 ];
 
 const PRIORITIES: FeedbackPriority[] = ['low', 'medium', 'high'];
+
+type TFunction = (key: string, params?: Record<string, string | number>) => string;
 
 function titleize(value: string) {
   return value
@@ -63,21 +66,40 @@ function titleize(value: string) {
     .join(' ');
 }
 
-function formatDate(value?: string | null) {
-  if (!value) return 'No date';
+function formatDate(
+  value: string | null | undefined,
+  language: string,
+  t: TFunction
+) {
+  if (!value) return t('common.noDate');
 
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
 
-  return date.toLocaleDateString('en-US', {
+  return date.toLocaleDateString(language === 'ar' ? 'ar' : 'en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
   });
 }
 
-function getTypeLabel(type: FeedbackType) {
-  return FEEDBACK_TYPES.find((item) => item.id === type)?.label ?? titleize(type);
+function getTypeLabel(type: FeedbackType, t: TFunction) {
+  const labelKey = FEEDBACK_TYPES.find((item) => item.id === type)?.labelKey;
+  return labelKey ? t(labelKey) : titleize(type);
+}
+
+function getPriorityLabel(priority: string, t: TFunction) {
+  const normalized = priority.toLowerCase();
+  const key = `feedback.priority.${normalized}`;
+  const translated = t(key);
+  return translated === key ? titleize(priority) : translated;
+}
+
+function getStatusLabel(status: string, t: TFunction) {
+  const normalized = status.toLowerCase();
+  const key = `feedback.status.${normalized}`;
+  const translated = t(key);
+  return translated === key ? titleize(status) : translated;
 }
 
 function getCoachInitials(name?: string | null) {
@@ -97,19 +119,24 @@ function getCoachInitials(name?: string | null) {
 function getTrainerLabel(
   trainerId?: number | string | null,
   trainerName?: string | null,
-  coaches: Coach[] = []
+  coaches: Coach[] = [],
+  t?: TFunction
 ) {
-  if (trainerId == null || trainerId === '') return 'No trainer selected';
+  if (trainerId == null || trainerId === '') {
+    return t ? t('feedback.noTrainerSelected') : 'No trainer selected';
+  }
 
   const coach = coaches.find((item) => Number(item.id) === Number(trainerId));
   const name = trainerName || coach?.name;
 
-  if (!name) return `Coach #${trainerId}`;
+  if (!name) {
+    return t ? t('feedback.coachNumber', { id: trainerId }) : `Coach #${trainerId}`;
+  }
 
   return coach?.email ? `${name} (${coach.email})` : name;
 }
 
-function getFeedbackBadge(item: FeedbackItem) {
+function getFeedbackBadge(item: FeedbackItem, t: TFunction) {
   const details = item.details ?? {};
 
   if (item.type === 'rating') {
@@ -123,7 +150,7 @@ function getFeedbackBadge(item: FeedbackItem) {
   if (item.type === 'equipment') {
     const priority = String(details.priority ?? 'medium');
     return {
-      label: titleize(priority),
+      label: getPriorityLabel(priority, t),
       style:
         priority === 'high'
           ? styles.highBadge
@@ -140,20 +167,32 @@ function getFeedbackBadge(item: FeedbackItem) {
   }
 
   return {
-    label: details.status ? titleize(String(details.status)) : 'Submitted',
+    label: details.status
+      ? getStatusLabel(String(details.status), t)
+      : t('feedback.status.submitted'),
     style: styles.statusBadge,
     textStyle: styles.statusBadgeText,
   };
 }
 
-function getDetailsSummary(item: FeedbackItem, coaches: Coach[]) {
+function getDetailsSummary(item: FeedbackItem, coaches: Coach[], t: TFunction) {
   const details = item.details ?? {};
 
   if (item.type === 'equipment') {
     return [
-      details.equipment_name ? `Equipment: ${details.equipment_name}` : null,
-      details.priority ? `Priority: ${titleize(String(details.priority))}` : null,
-      details.status ? `Status: ${titleize(String(details.status))}` : null,
+      details.equipment_name
+        ? t('feedback.detailEquipment', { value: String(details.equipment_name) })
+        : null,
+      details.priority
+        ? t('feedback.detailPriority', {
+            value: getPriorityLabel(String(details.priority), t),
+          })
+        : null,
+      details.status
+        ? t('feedback.detailStatus', {
+            value: getStatusLabel(String(details.status), t),
+          })
+        : null,
     ]
       .filter(Boolean)
       .join(' | ');
@@ -161,21 +200,31 @@ function getDetailsSummary(item: FeedbackItem, coaches: Coach[]) {
 
   if (item.type === 'rating') {
     return [
-      `Trainer: ${getTrainerLabel(
+      t('feedback.detailTrainer', {
+        value: getTrainerLabel(
         details.trainer_id,
         details.trainer_name,
-        coaches
-      )}`,
-      details.rating ? `Rating: ${details.rating}/5` : null,
+          coaches,
+          t
+        ),
+      }),
+      details.rating
+        ? t('feedback.detailRating', { value: `${details.rating}/5` })
+        : null,
     ]
       .filter(Boolean)
       .join(' | ');
   }
 
-  return details.status ? `Status: ${titleize(String(details.status))}` : '';
+  return details.status
+    ? t('feedback.detailStatus', {
+        value: getStatusLabel(String(details.status), t),
+      })
+    : '';
 }
 
 export default function FeedbackScreen() {
+  const { t, isRtl, language } = useTranslation();
   const feedbackQuery = useMyFeedback();
   const coachesQuery = useCoaches();
   const createFeedbackMutation = useCreateFeedback();
@@ -306,23 +355,23 @@ export default function FeedbackScreen() {
 
   const validateForm = () => {
     if (!content.trim()) {
-      showToast('Please enter feedback content.', 'error');
+      showToast(t('feedback.enterContent'), 'error');
       return false;
     }
 
     if (activeType === 'equipment' && !equipmentName.trim()) {
-      showToast('Please enter the equipment name.', 'error');
+      showToast(t('feedback.enterEquipment'), 'error');
       return false;
     }
 
     if (activeType === 'rating') {
       if (!trainerId.trim() || Number.isNaN(Number(trainerId))) {
-        showToast('Please select a trainer.', 'error');
+        showToast(t('feedback.selectTrainer'), 'error');
         return false;
       }
 
       if (rating < 1 || rating > 5) {
-        showToast('Please choose a rating from 1 to 5.', 'error');
+        showToast(t('feedback.chooseRating'), 'error');
         return false;
       }
     }
@@ -339,15 +388,15 @@ export default function FeedbackScreen() {
           id: editingFeedback.id,
           payload: buildUpdatePayload(),
         });
-        showToast('Feedback updated successfully.', 'success');
+        showToast(t('feedback.updated'), 'success');
       } else {
         await createFeedbackMutation.mutateAsync(buildCreatePayload());
-        showToast('Feedback submitted successfully.', 'success');
+        showToast(t('feedback.submitted'), 'success');
       }
 
       resetForm(activeType);
     } catch (error: any) {
-      showToast(error?.message || 'Failed to save feedback.', 'error');
+      showToast(error?.message || t('feedback.saveFailed'), 'error');
     }
   };
 
@@ -356,14 +405,14 @@ export default function FeedbackScreen() {
 
     try {
       await deleteFeedbackMutation.mutateAsync(deleteTarget.id);
-      showToast('Feedback deleted.', 'success');
+      showToast(t('feedback.deleted'), 'success');
       setDeleteTarget(null);
 
       if (editingFeedback?.id === deleteTarget.id) {
         resetForm(activeType);
       }
     } catch (error: any) {
-      showToast(error?.message || 'Failed to delete feedback.', 'error');
+      showToast(error?.message || t('feedback.deleteFailed'), 'error');
     }
   };
 
@@ -379,11 +428,13 @@ export default function FeedbackScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
       >
-        <View style={styles.content}>
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>Feedback & Reports</Text>
-            <Text style={styles.headerSubtitle}>
-              Share equipment issues, suggestions, and trainer ratings
+          <View style={styles.content}>
+            <View style={styles.header}>
+            <Text style={[styles.headerTitle, isRtl && styles.textRight]}>
+              {t('feedback.title')}
+            </Text>
+            <Text style={[styles.headerSubtitle, isRtl && styles.textRight]}>
+              {t('feedback.subtitle')}
             </Text>
           </View>
 
@@ -392,6 +443,7 @@ export default function FeedbackScreen() {
               style={[
                 styles.toast,
                 toast.type === 'success' ? styles.toastSuccess : styles.toastError,
+                isRtl && styles.rowReverse,
               ]}
             >
               <View style={styles.toastIcon}>
@@ -401,11 +453,13 @@ export default function FeedbackScreen() {
                   <TriangleAlert color="#FFFFFF" size={18} />
                 )}
               </View>
-              <Text style={styles.toastText}>{toast.message}</Text>
+              <Text style={[styles.toastText, isRtl && styles.textRight]}>
+                {toast.message}
+              </Text>
             </View>
           )}
 
-          <View style={styles.tabs}>
+          <View style={[styles.tabs, isRtl && styles.rowReverse]}>
             {FEEDBACK_TYPES.map((tab) => {
               const TabIcon = tab.icon;
               const active = activeType === tab.id;
@@ -418,6 +472,7 @@ export default function FeedbackScreen() {
                     styles.tab,
                     active && styles.tabActive,
                     disabled && styles.tabDisabled,
+                    isRtl && styles.rowReverse,
                   ]}
                   onPress={() => {
                     if (!editingFeedback) resetForm(tab.id);
@@ -426,7 +481,7 @@ export default function FeedbackScreen() {
                 >
                   <TabIcon color={active ? '#FFFFFF' : '#9CA3AF'} size={14} />
                   <Text style={[styles.tabText, active && styles.tabTextActive]}>
-                    {tab.label}
+                    {t(tab.labelKey)}
                   </Text>
                 </TouchableOpacity>
               );
@@ -434,20 +489,20 @@ export default function FeedbackScreen() {
           </View>
 
           <View style={styles.card}>
-            <View style={styles.cardHeader}>
+            <View style={[styles.cardHeader, isRtl && styles.rowReverse]}>
               <View style={styles.cardIconContainer}>
                 <SelectedIcon color="#0D7D6D" size={20} />
               </View>
               <View style={styles.cardTitleContainer}>
-                <Text style={styles.cardTitle}>
+                <Text style={[styles.cardTitle, isRtl && styles.textRight]}>
                   {editingFeedback
-                    ? `Edit ${getTypeLabel(activeType)}`
-                    : `New ${getTypeLabel(activeType)}`}
+                    ? t('feedback.editTitle', { type: getTypeLabel(activeType, t) })
+                    : t('feedback.newTitle', { type: getTypeLabel(activeType, t) })}
                 </Text>
-                <Text style={styles.cardSubtitle}>
+                <Text style={[styles.cardSubtitle, isRtl && styles.textRight]}>
                   {editingFeedback
-                    ? 'Feedback type is locked while editing'
-                    : 'Your feedback is sent directly to the FitMind team'}
+                    ? t('feedback.lockedType')
+                    : t('feedback.sentToTeam')}
                 </Text>
               </View>
 
@@ -465,8 +520,10 @@ export default function FeedbackScreen() {
             <View style={styles.form}>
               {activeType === 'equipment' && (
                 <>
-                  <Text style={styles.formLabel}>Equipment</Text>
-                  <View style={styles.optionsList}>
+                  <Text style={[styles.formLabel, isRtl && styles.textRight]}>
+                    {t('feedback.equipment')}
+                  </Text>
+                  <View style={[styles.optionsList, isRtl && styles.rowReverse]}>
                     {equipmentOptions.map((item) => {
                       const active =
                         equipmentName.trim().toLowerCase() === item.toLowerCase();
@@ -493,13 +550,15 @@ export default function FeedbackScreen() {
                   <TextInput
                     value={equipmentName}
                     onChangeText={setEquipmentName}
-                    placeholder="Equipment name or number"
+                    placeholder={t('feedback.equipmentPlaceholder')}
                     placeholderTextColor="#9CA3AF"
-                    style={styles.input}
+                    style={[styles.input, isRtl && styles.textRight]}
                   />
 
-                  <Text style={styles.formLabel}>Priority</Text>
-                  <View style={styles.segmentedRow}>
+                  <Text style={[styles.formLabel, isRtl && styles.textRight]}>
+                    {t('feedback.priority')}
+                  </Text>
+                  <View style={[styles.segmentedRow, isRtl && styles.rowReverse]}>
                     {PRIORITIES.map((item) => {
                       const active = priority === item;
                       return (
@@ -518,7 +577,7 @@ export default function FeedbackScreen() {
                               active && styles.segmentedButtonTextActive,
                             ]}
                           >
-                            {titleize(item)}
+                            {getPriorityLabel(item, t)}
                           </Text>
                         </TouchableOpacity>
                       );
@@ -529,28 +588,34 @@ export default function FeedbackScreen() {
 
               {activeType === 'rating' && (
                 <>
-                  <Text style={styles.formLabel}>Trainer</Text>
+                  <Text style={[styles.formLabel, isRtl && styles.textRight]}>
+                    {t('feedback.trainer')}
+                  </Text>
                   {coachesQuery.isLoading ? (
-                    <View style={styles.inlineNotice}>
+                    <View style={[styles.inlineNotice, isRtl && styles.rowReverse]}>
                       <ActivityIndicator size="small" color="#0D7D6D" />
-                      <Text style={styles.inlineNoticeText}>Loading coaches...</Text>
+                      <Text style={[styles.inlineNoticeText, isRtl && styles.textRight]}>
+                        {t('feedback.loadingCoaches')}
+                      </Text>
                     </View>
                   ) : coachesQuery.isError ? (
-                    <View style={styles.inlineNotice}>
+                    <View style={[styles.inlineNotice, isRtl && styles.rowReverse]}>
                       <TriangleAlert color="#B91C1C" size={18} />
-                      <Text style={styles.inlineNoticeText}>
-                        Could not load coaches.
+                      <Text style={[styles.inlineNoticeText, isRtl && styles.textRight]}>
+                        {t('feedback.coachesLoadFailed')}
                       </Text>
                       <TouchableOpacity
                         style={styles.inlineRetryButton}
                         activeOpacity={0.8}
                         onPress={() => coachesQuery.refetch()}
                       >
-                        <Text style={styles.inlineRetryText}>Retry</Text>
+                        <Text style={styles.inlineRetryText}>{t('common.tryAgain')}</Text>
                       </TouchableOpacity>
                     </View>
                   ) : coaches.length === 0 ? (
-                    <Text style={styles.emptyInlineText}>No coaches available.</Text>
+                    <Text style={[styles.emptyInlineText, isRtl && styles.textRight]}>
+                      {t('feedback.noCoaches')}
+                    </Text>
                   ) : (
                     <View style={styles.coachesList}>
                       {coaches.map((coach) => {
@@ -561,6 +626,7 @@ export default function FeedbackScreen() {
                             style={[
                               styles.trainerItem,
                               active && styles.trainerItemSelected,
+                              isRtl && styles.rowReverse,
                             ]}
                             onPress={() => setTrainerId(String(coach.id))}
                             activeOpacity={0.75}
@@ -581,9 +647,11 @@ export default function FeedbackScreen() {
                               </Text>
                             </View>
                             <View style={styles.trainerTextWrap}>
-                              <Text style={styles.trainerName}>{coach.name}</Text>
-                              <Text style={styles.trainerRole}>
-                                {coach.email || 'Coach'}
+                              <Text style={[styles.trainerName, isRtl && styles.textRight]}>
+                                {coach.name}
+                              </Text>
+                              <Text style={[styles.trainerRole, isRtl && styles.textRight]}>
+                                {coach.email || t('feedback.coachFallback')}
                               </Text>
                             </View>
                           </TouchableOpacity>
@@ -592,8 +660,10 @@ export default function FeedbackScreen() {
                     </View>
                   )}
 
-                  <Text style={styles.formLabel}>Rating</Text>
-                  <View style={styles.ratingContainer}>
+                  <Text style={[styles.formLabel, isRtl && styles.textRight]}>
+                    {t('feedback.rating')}
+                  </Text>
+                  <View style={[styles.ratingContainer, isRtl && styles.rowReverse]}>
                     {[1, 2, 3, 4, 5].map((star) => (
                       <TouchableOpacity
                         key={star}
@@ -611,27 +681,27 @@ export default function FeedbackScreen() {
                 </>
               )}
 
-              <Text style={styles.formLabel}>
+              <Text style={[styles.formLabel, isRtl && styles.textRight]}>
                 {activeType === 'suggestion'
-                  ? 'Your Suggestion'
+                  ? t('feedback.yourSuggestion')
                   : activeType === 'rating'
-                  ? 'Your Feedback'
-                  : 'Describe the Issue'}
+                  ? t('feedback.yourFeedback')
+                  : t('feedback.describeIssue')}
               </Text>
               <TextInput
                 value={content}
                 onChangeText={setContent}
                 placeholder={
                   activeType === 'suggestion'
-                    ? 'What would you like us to improve or add?'
+                    ? t('feedback.suggestionPlaceholder')
                     : activeType === 'rating'
-                    ? 'Share your experience with this trainer...'
-                    : "Please describe what's wrong with the equipment..."
+                    ? t('feedback.ratingPlaceholder')
+                    : t('feedback.issuePlaceholder')
                 }
                 placeholderTextColor="#9CA3AF"
                 multiline
                 numberOfLines={5}
-                style={styles.textarea}
+                style={[styles.textarea, isRtl && styles.textRight]}
               />
 
               <TouchableOpacity
@@ -644,63 +714,67 @@ export default function FeedbackScreen() {
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
                   <Text style={styles.submitButtonText}>
-                    {editingFeedback ? 'Update Feedback' : 'Submit Feedback'}
+                    {editingFeedback ? t('feedback.update') : t('feedback.submit')}
                   </Text>
                 )}
               </TouchableOpacity>
             </View>
           </View>
 
-          <View style={styles.listHeader}>
-            <Text style={styles.sectionTitle}>My Feedback</Text>
+          <View style={[styles.listHeader, isRtl && styles.rowReverse]}>
+            <Text style={[styles.sectionTitle, isRtl && styles.textRight]}>
+              {t('feedback.myFeedback')}
+            </Text>
             <Text style={styles.sectionCount}>{sortedFeedback.length}</Text>
           </View>
 
           {feedbackQuery.isLoading ? (
             <View style={styles.stateCard}>
               <ActivityIndicator size="large" color="#0D7D6D" />
-              <Text style={styles.stateText}>Loading feedback...</Text>
+              <Text style={styles.stateText}>{t('feedback.loading')}</Text>
             </View>
           ) : feedbackQuery.isError ? (
             <View style={styles.stateCard}>
               <TriangleAlert color="#B91C1C" size={28} />
-              <Text style={styles.stateTitle}>Could not load feedback</Text>
+              <Text style={styles.stateTitle}>{t('feedback.loadFailedTitle')}</Text>
               <Text style={styles.stateText}>
                 {feedbackQuery.error instanceof Error
                   ? feedbackQuery.error.message
-                  : 'Failed to load feedback.'}
+                  : t('feedback.loadFailed')}
               </Text>
               <TouchableOpacity
                 style={styles.retryButton}
                 activeOpacity={0.8}
                 onPress={() => feedbackQuery.refetch()}
               >
-                <Text style={styles.retryButtonText}>Try Again</Text>
+                <Text style={styles.retryButtonText}>{t('common.tryAgain')}</Text>
               </TouchableOpacity>
             </View>
           ) : sortedFeedback.length === 0 ? (
             <View style={styles.stateCard}>
               <MessageSquare color="#0D7D6D" size={30} />
-              <Text style={styles.stateTitle}>No feedback submitted yet.</Text>
+              <Text style={styles.stateTitle}>{t('feedback.emptyTitle')}</Text>
               <Text style={styles.stateText}>
-                Use the form above to send your first note to the team.
+                {t('feedback.emptyText')}
               </Text>
             </View>
           ) : (
             <View style={styles.feedbackList}>
               {sortedFeedback.map((item) => {
-                const badge = getFeedbackBadge(item);
-                const detailsSummary = getDetailsSummary(item, coaches);
+                const badge = getFeedbackBadge(item, t);
+                const detailsSummary = getDetailsSummary(item, coaches, t);
 
                 return (
                   <View key={item.id} style={styles.feedbackCard}>
-                    <View style={styles.feedbackTopRow}>
+                    <View style={[styles.feedbackTopRow, isRtl && styles.rowReverse]}>
                       <View style={styles.feedbackTypeWrap}>
-                        <Text style={styles.feedbackType}>{getTypeLabel(item.type)}</Text>
-                        <View style={styles.dateRow}>
+                        <Text style={[styles.feedbackType, isRtl && styles.textRight]}>
+                          {getTypeLabel(item.type, t)}
+                        </Text>
+                        <View style={[styles.dateRow, isRtl && styles.rowReverse]}>
                           <Calendar color="#9CA3AF" size={13} />
                           <Text style={styles.feedbackDate}>
-                            {formatDate(item.created_at)}
+                            {formatDate(item.created_at, language, t)}
                           </Text>
                         </View>
                       </View>
@@ -712,28 +786,32 @@ export default function FeedbackScreen() {
                       </View>
                     </View>
 
-                    <Text style={styles.feedbackContent}>{item.content}</Text>
+                    <Text style={[styles.feedbackContent, isRtl && styles.textRight]}>
+                      {item.content}
+                    </Text>
                     {detailsSummary ? (
-                      <Text style={styles.feedbackDetails}>{detailsSummary}</Text>
+                      <Text style={[styles.feedbackDetails, isRtl && styles.textRight]}>
+                        {detailsSummary}
+                      </Text>
                     ) : null}
 
-                    <View style={styles.cardActions}>
+                    <View style={[styles.cardActions, isRtl && styles.rowReverse]}>
                       <TouchableOpacity
-                        style={styles.editButton}
+                        style={[styles.editButton, isRtl && styles.rowReverse]}
                         activeOpacity={0.8}
                         onPress={() => startEdit(item)}
                       >
                         <Edit2 color="#0D7D6D" size={15} />
-                        <Text style={styles.editButtonText}>Edit</Text>
+                        <Text style={styles.editButtonText}>{t('common.edit')}</Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity
-                        style={styles.deleteButton}
+                        style={[styles.deleteButton, isRtl && styles.rowReverse]}
                         activeOpacity={0.8}
                         onPress={() => setDeleteTarget(item)}
                       >
                         <Trash2 color="#B91C1C" size={15} />
-                        <Text style={styles.deleteButtonText}>Delete</Text>
+                        <Text style={styles.deleteButtonText}>{t('feedback.delete')}</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -755,19 +833,21 @@ export default function FeedbackScreen() {
             <View style={styles.confirmIcon}>
               <Trash2 color="#B91C1C" size={22} />
             </View>
-            <Text style={styles.confirmTitle}>Delete feedback?</Text>
-            <Text style={styles.confirmText}>
-              This removes the selected feedback from your account.
+            <Text style={[styles.confirmTitle, isRtl && styles.textRight]}>
+              {t('feedback.deleteQuestion')}
+            </Text>
+            <Text style={[styles.confirmText, isRtl && styles.textRight]}>
+              {t('feedback.deleteText')}
             </Text>
 
-            <View style={styles.confirmActions}>
+            <View style={[styles.confirmActions, isRtl && styles.rowReverse]}>
               <TouchableOpacity
                 style={styles.confirmCancelButton}
                 activeOpacity={0.8}
                 onPress={() => setDeleteTarget(null)}
                 disabled={deleting}
               >
-                <Text style={styles.confirmCancelText}>Keep</Text>
+                <Text style={styles.confirmCancelText}>{t('feedback.keep')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -779,7 +859,7 @@ export default function FeedbackScreen() {
                 {deleting ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.confirmDeleteText}>Delete</Text>
+                  <Text style={styles.confirmDeleteText}>{t('feedback.delete')}</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -1389,5 +1469,11 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '800',
+  },
+  rowReverse: {
+    flexDirection: 'row-reverse',
+  },
+  textRight: {
+    textAlign: 'right',
   },
 });

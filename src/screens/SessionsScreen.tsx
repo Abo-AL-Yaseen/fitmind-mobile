@@ -41,6 +41,7 @@ import {
   isSessionCancelled,
   isSessionFull,
 } from '../utils/coachSessionUtils';
+import { useTranslation } from '../i18n';
 
 type ToastState = {
   visible: boolean;
@@ -257,6 +258,7 @@ function getStatusStyle(session: CoachSession) {
 }
 
 export default function SessionsScreen() {
+  const { t, isRtl } = useTranslation();
   const availableQuery = useAvailableSessions();
   const mySessionsQuery = useMySessions();
   const bookMutation = useBookSession();
@@ -360,16 +362,16 @@ export default function SessionsScreen() {
     const sessionId = getSessionIdValue(session);
 
     if (sessionId == null) {
-      showToast('This session is missing an ID.', 'error');
+      showToast(t('sessions.missingId'), 'error');
       return;
     }
 
     try {
       setBookingSessionId(String(sessionId));
       const response = await bookMutation.mutateAsync(sessionId);
-      showToast(response?.message || 'Session successfully booked.', 'success');
+      showToast(response?.message || t('sessions.bookedSuccess'), 'success');
     } catch (error: any) {
-      showToast(error?.message || 'Failed to book session.', 'error');
+      showToast(error?.message || t('sessions.bookFailed'), 'error');
     } finally {
       setBookingSessionId(null);
     }
@@ -379,7 +381,7 @@ export default function SessionsScreen() {
     return (
       <View style={styles.centerState}>
         <ActivityIndicator size="large" color="#14B8A6" />
-        <Text style={styles.centerText}>Loading sessions...</Text>
+        <Text style={styles.centerText}>{t('sessions.loading')}</Text>
       </View>
     );
   }
@@ -388,14 +390,14 @@ export default function SessionsScreen() {
     return (
       <View style={styles.centerState}>
         <CircleAlert color="#F87171" size={32} />
-        <Text style={styles.centerTitle}>Could not load sessions</Text>
+        <Text style={styles.centerTitle}>{t('sessions.loadFailedTitle')}</Text>
         <Text style={styles.centerText}>
           {availableQuery.error instanceof Error
             ? availableQuery.error.message
-            : 'Failed to load available sessions.'}
+            : t('sessions.loadFailed')}
         </Text>
         <TouchableOpacity style={styles.retryButton} onPress={() => availableQuery.refetch()}>
-          <Text style={styles.retryButtonText}>Try Again</Text>
+          <Text style={styles.retryButtonText}>{t('common.tryAgain')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -421,10 +423,14 @@ export default function SessionsScreen() {
           end={{ x: 1, y: 1 }}
           style={styles.hero}
         >
-          <View style={styles.heroTopRow}>
+          <View style={[styles.heroTopRow, isRtl && styles.rowReverse]}>
             <View style={styles.heroTextWrap}>
-              <Text style={styles.heroTitle}>Sessions</Text>
-              <Text style={styles.heroSubtitle}>Book your training sessions</Text>
+              <Text style={[styles.heroTitle, isRtl && styles.textRight]}>
+                {t('sessions.title')}
+              </Text>
+              <Text style={[styles.heroSubtitle, isRtl && styles.textRight]}>
+                {t('sessions.subtitle')}
+              </Text>
             </View>
 
             <TouchableOpacity
@@ -444,25 +450,25 @@ export default function SessionsScreen() {
           <View style={styles.statsRow}>
             <View style={styles.statCard}>
               <Text style={styles.statValue}>{stats.booked}</Text>
-              <Text style={styles.statLabel}>Booked</Text>
+              <Text style={styles.statLabel}>{t('sessions.booked')}</Text>
             </View>
             <View style={styles.statCard}>
               <Text style={styles.statValue}>{stats.available}</Text>
-              <Text style={styles.statLabel}>Available</Text>
+              <Text style={styles.statLabel}>{t('sessions.available')}</Text>
             </View>
             <View style={styles.statCard}>
               <Text style={styles.statValue}>{stats.coaches}</Text>
-              <Text style={styles.statLabel}>Coaches</Text>
+              <Text style={styles.statLabel}>{t('sessions.coaches')}</Text>
             </View>
           </View>
         </LinearGradient>
 
         <View style={styles.content}>
           <View style={styles.weekCard}>
-            <View style={styles.weekHeader}>
-              <View style={styles.weekTitleRow}>
+            <View style={[styles.weekHeader, isRtl && styles.rowReverse]}>
+              <View style={[styles.weekTitleRow, isRtl && styles.rowReverse]}>
                 <CalendarDays color="#14B8A6" size={18} />
-                <Text style={styles.weekTitle}>This Week</Text>
+                <Text style={styles.weekTitle}>{t('sessions.thisWeek')}</Text>
               </View>
 
               <TouchableOpacity
@@ -476,7 +482,7 @@ export default function SessionsScreen() {
                     !selectedDateKey && styles.allDatesButtonTextActive,
                   ]}
                 >
-                  All
+                  {t('sessions.all')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -529,16 +535,15 @@ export default function SessionsScreen() {
           {sessionGroups.length === 0 ? (
             <View style={styles.emptyCard}>
               <Dumbbell color="#14B8A6" size={32} />
-              <Text style={styles.emptyTitle}>No sessions found</Text>
+              <Text style={styles.emptyTitle}>{t('sessions.emptyTitle')}</Text>
               <Text style={styles.emptyText}>
-                Pull to refresh or choose another date to browse available coach
-                sessions.
+                {t('sessions.emptyText')}
               </Text>
             </View>
           ) : (
             sessionGroups.map((group) => (
               <View key={group.key} style={styles.section}>
-                <View style={styles.sectionHeader}>
+                <View style={[styles.sectionHeader, isRtl && styles.rowReverse]}>
                   <View style={styles.sectionAccent} />
                   <Text style={styles.sectionTitle}>{group.title}</Text>
                 </View>
@@ -564,14 +569,14 @@ export default function SessionsScreen() {
                     const bookingThisSession = bookingSessionId === sessionIdKey;
 
                     const buttonLabel = bookingThisSession
-                      ? 'Booking...'
+                      ? t('sessions.booking')
                       : alreadyBooked
-                      ? 'Booked'
+                      ? t('sessions.booked')
                       : cancelled
-                      ? 'Cancelled'
+                      ? t('sessions.cancelled')
                       : full
-                      ? 'Full'
-                      : 'Book';
+                      ? t('sessions.full')
+                      : t('sessions.book');
 
                     return (
                       <View
@@ -581,7 +586,7 @@ export default function SessionsScreen() {
                           alreadyBooked && styles.sessionCardBooked,
                         ]}
                       >
-                        <View style={styles.sessionTopRow}>
+                          <View style={[styles.sessionTopRow, isRtl && styles.rowReverse]}>
                           <View style={styles.coachAvatar}>
                             <Text style={styles.coachAvatarText}>
                               {getCoachInitials(coachName)}
@@ -602,7 +607,9 @@ export default function SessionsScreen() {
                               </View>
                             </View>
 
-                            <Text style={styles.coachRole}>Fitness Coach</Text>
+                            <Text style={[styles.coachRole, isRtl && styles.textRight]}>
+                              {t('sessions.fitnessCoach')}
+                            </Text>
 
                             <View style={styles.metaRow}>
                               <View style={styles.metaPill}>
@@ -621,7 +628,7 @@ export default function SessionsScreen() {
                           </View>
                         </View>
 
-                        <View style={styles.sessionBottomRow}>
+                        <View style={[styles.sessionBottomRow, isRtl && styles.rowReverse]}>
                           <Text
                             style={[
                               styles.spotsText,
@@ -630,8 +637,8 @@ export default function SessionsScreen() {
                             ]}
                           >
                             {capacity > 0
-                              ? `${spotsLeft} spots left`
-                              : 'Capacity to be announced'}
+                              ? t('sessions.spotsLeft', { count: spotsLeft })
+                              : t('sessions.capacityTba')}
                           </Text>
 
                           <TouchableOpacity
@@ -1093,5 +1100,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 14,
     fontWeight: '800',
+  },
+  rowReverse: {
+    flexDirection: 'row-reverse',
+  },
+  textRight: {
+    textAlign: 'right',
   },
 });

@@ -4,7 +4,6 @@ export const quickLinks = [
   { path: "Schedule", icon: "ClipboardList", label: "My Schedule", color: "#3B82F6", bg: "#EFF6FF" },
   { path: "Workout", icon: "Dumbbell", label: "Workouts", color: "#0D7D6D", bg: "#E6F4F1" },
   { path: "Nutrition", icon: "Apple", label: "Nutrition", color: "#F97316", bg: "#FFF7ED" },
-  { path: "Progress", icon: "TrendingUp", label: "Progress", color: "#3B82F6", bg: "#EFF6FF" },
   { path: "AICoach", icon: "MessageCircle", label: "AI Coach", color: "#A855F7", bg: "#FAF5FF" },
 ];
 

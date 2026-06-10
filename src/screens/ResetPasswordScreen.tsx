@@ -17,10 +17,12 @@ import type { RootStackParamList } from '../navigation/Navigation';
 import { Colors, Spacing, BorderRadius, FontSizes } from '../constants/theme';
 import { useResetDataQuery } from '../hooks/auth/queries/useResetDataQuery';
 import { useResetPasswordMutation } from '../hooks/auth/mutations/useResetPasswordMutation';
+import { useTranslation } from '../i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ResetPassword'>;
 
 export function ResetPasswordScreen({ navigation }: Props) {
+  const { t, isRtl } = useTranslation();
   const resetDataQuery = useResetDataQuery();
   const resetPasswordMutation = useResetPasswordMutation();
 
@@ -62,13 +64,13 @@ export function ResetPasswordScreen({ navigation }: Props) {
   const handleSubmit = async () => {
     if (!isPasswordValid) {
       setError(
-        'Password must be at least 8 characters and include uppercase, lowercase, and a number.'
+        t('reset.invalidPassword')
       );
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match.');
+      setError(t('reset.passwordMismatch'));
       return;
     }
 
@@ -94,7 +96,7 @@ export function ResetPasswordScreen({ navigation }: Props) {
         navigation.replace('Login');
       }, 2000);
     } catch (err: any) {
-      setError(err?.message || 'Failed to reset password. Please try again.');
+      setError(err?.message || t('reset.failed'));
     }
   };
 
@@ -105,7 +107,7 @@ export function ResetPasswordScreen({ navigation }: Props) {
       <SafeAreaView style={styles.successSafeArea}>
         <View style={styles.successContainer}>
           <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.successSubtitle}>Checking reset session...</Text>
+          <Text style={styles.successSubtitle}>{t('reset.checking')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -124,10 +126,10 @@ export function ResetPasswordScreen({ navigation }: Props) {
               />
             </View>
 
-            <Text style={styles.successTitle}>Password Reset Successfully!</Text>
+            <Text style={styles.successTitle}>{t('reset.successTitle')}</Text>
 
             <Text style={styles.successSubtitle}>
-              Your password has been updated. Redirecting to login...
+              {t('reset.successSubtitle')}
             </Text>
           </View>
         </View>
@@ -147,15 +149,19 @@ export function ResetPasswordScreen({ navigation }: Props) {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.card}>
-            <Text style={styles.title}>Reset Password</Text>
+            <Text style={[styles.title, isRtl && styles.textRight]}>
+              {t('reset.title')}
+            </Text>
 
-            <Text style={styles.subtitle}>
-              Enter your new password below.
+            <Text style={[styles.subtitle, isRtl && styles.textRight]}>
+              {t('reset.subtitle')}
             </Text>
 
             <View style={styles.formContainer}>
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>New Password</Text>
+                <Text style={[styles.label, isRtl && styles.textRight]}>
+                  {t('reset.newPassword')}
+                </Text>
                 <View style={styles.inputWrapper}>
                   <Ionicons
                     name="lock-closed-outline"
@@ -165,7 +171,7 @@ export function ResetPasswordScreen({ navigation }: Props) {
                   />
                   <TextInput
                     style={[styles.input, styles.inputWithButton]}
-                    placeholder="Enter new password"
+                    placeholder={t('reset.newPasswordPlaceholder')}
                     placeholderTextColor={Colors.textLight}
                     value={formData.password}
                     onChangeText={(value) => {
@@ -190,7 +196,9 @@ export function ResetPasswordScreen({ navigation }: Props) {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Confirm New Password</Text>
+                <Text style={[styles.label, isRtl && styles.textRight]}>
+                  {t('reset.confirmPassword')}
+                </Text>
                 <View style={styles.inputWrapper}>
                   <Ionicons
                     name="lock-closed-outline"
@@ -200,7 +208,7 @@ export function ResetPasswordScreen({ navigation }: Props) {
                   />
                   <TextInput
                     style={[styles.input, styles.inputWithButton]}
-                    placeholder="Re-enter new password"
+                    placeholder={t('reset.confirmPasswordPlaceholder')}
                     placeholderTextColor={Colors.textLight}
                     value={formData.confirmPassword}
                     onChangeText={(value) => {
@@ -232,13 +240,15 @@ export function ResetPasswordScreen({ navigation }: Props) {
 
               {error ? (
                 <View style={styles.errorBox}>
-                  <Text style={styles.errorText}>{error}</Text>
+                  <Text style={[styles.errorText, isRtl && styles.textRight]}>
+                    {error}
+                  </Text>
                 </View>
               ) : null}
 
               <View style={styles.requirementsBox}>
                 <Text style={styles.requirementsTitle}>
-                  Password requirements:
+                  {t('reset.requirementsTitle')}
                 </Text>
 
                 <Text
@@ -251,7 +261,7 @@ export function ResetPasswordScreen({ navigation }: Props) {
                       : styles.defaultRequirement,
                   ]}
                 >
-                  • At least 8 characters long
+                  {t('reset.reqMinLength')}
                 </Text>
 
                 <Text
@@ -264,7 +274,7 @@ export function ResetPasswordScreen({ navigation }: Props) {
                       : styles.defaultRequirement,
                   ]}
                 >
-                  • Include at least one uppercase letter
+                  {t('reset.reqUppercase')}
                 </Text>
 
                 <Text
@@ -277,7 +287,7 @@ export function ResetPasswordScreen({ navigation }: Props) {
                       : styles.defaultRequirement,
                   ]}
                 >
-                  • Include at least one lowercase letter
+                  {t('reset.reqLowercase')}
                 </Text>
 
                 <Text
@@ -290,7 +300,7 @@ export function ResetPasswordScreen({ navigation }: Props) {
                       : styles.defaultRequirement,
                   ]}
                 >
-                  • Include at least one number
+                  {t('reset.reqNumber')}
                 </Text>
               </View>
 
@@ -310,16 +320,16 @@ export function ResetPasswordScreen({ navigation }: Props) {
                     <ActivityIndicator color="#fff" />
                   ) : (
                     <Text style={styles.primaryButtonText}>
-                      Reset Password
+                      {t('reset.button')}
                     </Text>
                   )}
                 </View>
               </TouchableOpacity>
 
               <View style={styles.footer}>
-                <Text style={styles.footerText}>Remember your password? </Text>
+                <Text style={styles.footerText}>{t('forgot.remember')} </Text>
                 <TouchableOpacity onPress={() => navigation.replace('Login')}>
-                  <Text style={styles.footerLink}>Back to login</Text>
+                  <Text style={styles.footerLink}>{t('reset.backToLogin')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -516,5 +526,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
     marginTop: Spacing.md,
+  },
+  textRight: {
+    textAlign: 'right',
   },
 });

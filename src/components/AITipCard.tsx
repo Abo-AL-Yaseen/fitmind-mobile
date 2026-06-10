@@ -1,21 +1,26 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Zap } from 'lucide-react-native';
+import { useTranslation } from '../i18n';
 
 interface AITipCardProps {
   title?: string;
   text: string;
 }
 
-export function AITipCard({ title = "AI Tip", text }: AITipCardProps) {
+export function AITipCard({ title, text }: AITipCardProps) {
+  const { t, isRtl } = useTranslation();
+
   return (
-    <View style={styles.aiTip}>
+    <View style={[styles.aiTip, isRtl && styles.rowReverse]}>
       <View style={styles.aiTipIcon}>
         <Zap color="#FFFFFF" size={16} />
       </View>
       <View style={styles.aiTipContent}>
-        <Text style={styles.aiTipTitle}>{title}</Text>
-        <Text style={styles.aiTipText}>{text}</Text>
+        <Text style={[styles.aiTipTitle, isRtl && styles.textRight]}>
+          {title ?? t('common.aiTip')}
+        </Text>
+        <Text style={[styles.aiTipText, isRtl && styles.textRight]}>{text}</Text>
       </View>
     </View>
   );
@@ -53,5 +58,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
     lineHeight: 20,
+  },
+  rowReverse: {
+    flexDirection: 'row-reverse',
+  },
+  textRight: {
+    textAlign: 'right',
   },
 });

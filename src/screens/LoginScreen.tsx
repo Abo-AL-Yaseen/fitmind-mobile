@@ -24,6 +24,7 @@ import { registerForPushNotificationsAsync } from '../services/notifications';
 import { savePushToken } from '../services/pushTokens';
 import { clearAuth } from '../services/auth';
 import { ApiError } from '../services/api';
+import { useTranslation } from '../i18n';
 
 type LoginScreenProps = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Login'>;
@@ -65,15 +66,16 @@ function getString(value: unknown): string {
 }
 
 function getSubscriptionRequiredDetails(
-  error: unknown
+  error: unknown,
+  t: (key: string) => string
 ): SubscriptionRequiredDetails | null {
   const data = getErrorData(error);
   const code = getString(data.code).toLowerCase();
-  const title = getString(data.title) || 'Subscription Required';
+  const title = getString(data.title) || t('common.subscriptionRequired');
   const message =
     getString(data.message) ||
     (error instanceof Error ? error.message : '') ||
-    'Your subscription is not active. Please renew your subscription to continue.';
+    t('common.subscriptionMessage');
   const normalizedMessage = message.toLowerCase();
 
   const isSubscriptionRequired =
@@ -95,6 +97,7 @@ function getSubscriptionRequiredDetails(
 export function LoginScreen({ navigation }: LoginScreenProps) {
   const loginMutation = useLoginMutation();
   const queryClient = useQueryClient();
+  const { t, isRtl } = useTranslation();
 
   const [showPassword, setShowPassword] = useState(false);
 
@@ -114,9 +117,8 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
   const [subscriptionModal, setSubscriptionModal] =
     useState<SubscriptionModalState>({
       visible: false,
-      title: 'Subscription Required',
-      message:
-        'Your subscription is not active. Please renew your subscription to continue.',
+      title: t('common.subscriptionRequired'),
+      message: t('common.subscriptionMessage'),
     });
 
   const toastTranslateY = useRef(new Animated.Value(120)).current;
@@ -189,15 +191,15 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
     setGeneralError('');
 
     if (!email.trim()) {
-      setEmailError('Email is required.');
+      setEmailError(t('login.emailRequired'));
       isValid = false;
     } else if (!/\S+@\S+\.\S+/.test(email.trim())) {
-      setEmailError('Please enter a valid email address.');
+      setEmailError(t('login.emailInvalid'));
       isValid = false;
     }
 
     if (!password.trim()) {
-      setPasswordError('Password is required.');
+      setPasswordError(t('login.passwordRequired'));
       isValid = false;
     }
 
@@ -222,17 +224,17 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
           await savePushToken(pushToken);
         }
       } catch (error) {
-        console.warn('Push token registration failed:', error);
+        console.warn(t('login.pushTokenFailed'), error);
       }
 
       showToast(
         'success',
-        'Login successful',
-        'Welcome back! Redirecting to your dashboard...',
+        t('login.successTitle'),
+        t('login.successMessage'),
         true
       );
     } catch (error: any) {
-      const subscriptionRequired = getSubscriptionRequiredDetails(error);
+      const subscriptionRequired = getSubscriptionRequiredDetails(error, t);
 
       if (subscriptionRequired) {
         await clearAuth();
@@ -248,11 +250,11 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
       }
 
       const message =
-        error?.message || 'Login failed. Please check your credentials.';
+        error?.message || t('login.failedMessage');
 
       setGeneralError(message);
 
-      showToast('error', 'Login failed', message);
+      showToast('error', t('login.failedTitle'), message);
     }
   }
 
@@ -293,21 +295,25 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
               </View>
               <Text style={styles.logoText}>FitMind</Text>
               <Text style={styles.logoSubtext}>
-                Sign in to access your fitness journey
+                {t('login.logoSubtitle')}
               </Text>
             </View>
 
             <View style={styles.card}>
               <View style={styles.headerContainer}>
-                <Text style={styles.headerTitle}>Welcome Back</Text>
-                <Text style={styles.headerSubtitle}>
-                  Sign in using the email and password created for you by the gym.
+                <Text style={[styles.headerTitle, isRtl && styles.textRight]}>
+                  {t('login.title')}
+                </Text>
+                <Text style={[styles.headerSubtitle, isRtl && styles.textRight]}>
+                  {t('login.subtitle')}
                 </Text>
               </View>
 
               <View style={styles.formContainer}>
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Email</Text>
+                  <Text style={[styles.label, isRtl && styles.textRight]}>
+                    {t('common.email')}
+                  </Text>
                   <View style={styles.inputWrapper}>
                     <Ionicons
                       name="mail-outline"
@@ -317,7 +323,7 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
                     />
                     <TextInput
                       style={styles.input}
-                      placeholder="your@email.com"
+                      placeholder={t('login.emailPlaceholder')}
                       placeholderTextColor={Colors.textLight}
                       value={email}
                       onChangeText={(value) => {
@@ -330,11 +336,17 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
                       autoCorrect={false}
                     />
                   </View>
-                  {!!emailError && <Text style={styles.errorText}>{emailError}</Text>}
+                  {!!emailError && (
+                    <Text style={[styles.errorText, isRtl && styles.textRight]}>
+                      {emailError}
+                    </Text>
+                  )}
                 </View>
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Password</Text>
+                  <Text style={[styles.label, isRtl && styles.textRight]}>
+                    {t('common.password')}
+                  </Text>
                   <View style={styles.inputWrapper}>
                     <Ionicons
                       name="lock-closed-outline"
@@ -344,7 +356,7 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
                     />
                     <TextInput
                       style={[styles.input, styles.inputWithButton]}
-                      placeholder="••••••••"
+                      placeholder={t('login.passwordPlaceholder')}
                       placeholderTextColor={Colors.textLight}
                       value={password}
                       onChangeText={(value) => {
@@ -368,7 +380,9 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
                     </TouchableOpacity>
                   </View>
                   {!!passwordError && (
-                    <Text style={styles.errorText}>{passwordError}</Text>
+                    <Text style={[styles.errorText, isRtl && styles.textRight]}>
+                      {passwordError}
+                    </Text>
                   )}
                 </View>
 
@@ -376,12 +390,14 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
                   style={styles.forgotButton}
                   onPress={handleForgotPassword}
                 >
-                  <Text style={styles.forgotText}>Forgot password?</Text>
+                  <Text style={styles.forgotText}>{t('login.forgotPassword')}</Text>
                 </TouchableOpacity>
 
                 {!!generalError && (
                   <View style={styles.generalErrorBox}>
-                    <Text style={styles.generalErrorText}>{generalError}</Text>
+                    <Text style={[styles.generalErrorText, isRtl && styles.textRight]}>
+                      {generalError}
+                    </Text>
                   </View>
                 )}
 
@@ -400,18 +416,18 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
                     {isLoading ? (
                       <ActivityIndicator color="#fff" />
                     ) : (
-                      <Text style={styles.primaryButtonText}>Sign In</Text>
+                      <Text style={styles.primaryButtonText}>{t('login.signIn')}</Text>
                     )}
                   </LinearGradient>
                 </TouchableOpacity>
 
                 <Text style={styles.helperText}>
-                  This mobile app is available for member accounts only.
+                  {t('common.memberOnly')}
                 </Text>
               </View>
             </View>
 
-            <Text style={styles.footer}>© 2026 FitMind. All rights reserved.</Text>
+            <Text style={styles.footer}>{t('login.footer')}</Text>
           </ScrollView>
 
           {toast.visible && (
@@ -478,7 +494,7 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
                     style={styles.subscriptionModalButtonGradient}
                   >
                     <Text style={styles.subscriptionModalButtonText}>
-                      Back to Login
+                      {t('common.backToLogin')}
                     </Text>
                   </LinearGradient>
                 </TouchableOpacity>
@@ -633,6 +649,9 @@ const styles = StyleSheet.create({
     color: Colors.textLight,
     fontSize: 12,
     lineHeight: 18,
+  },
+  textRight: {
+    textAlign: 'right',
   },
   errorText: {
     marginTop: 6,
