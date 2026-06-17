@@ -265,8 +265,5 @@ This repository is the mobile member app for the broader FitMind platform.
 
 ## Authors
 
-- FitMind graduation project team
-
-## License
-
-License not specified.
+- mahmoud yaseen
+- ayham fuqha
